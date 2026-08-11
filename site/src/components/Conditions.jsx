@@ -1,5 +1,5 @@
 import { useInView } from "../hooks";
-import { conditions, profile } from "../data";
+import { conditions } from "../data";
 
 export default function Conditions() {
   const [ref, visible] = useInView();
@@ -24,19 +24,6 @@ export default function Conditions() {
         ))}
       </div>
 
-      {/* Footer */}
-      <footer className="mt-20 pt-8 border-t border-slate-200 dark:border-slate-800 text-center">
-        <p className="text-sm font-semibold text-slate-900 dark:text-white">{profile.name}</p>
-        <a
-          href={`mailto:${profile.email}`}
-          className="text-sm text-violet-600 dark:text-violet-400 hover:underline mt-1 inline-block"
-        >
-          {profile.email}
-        </a>
-        <p className="text-xs text-slate-400 dark:text-slate-600 mt-4">
-          Built with React + Vite + Tailwind · {new Date().getFullYear()}
-        </p>
-      </footer>
     </section>
   );
 }
