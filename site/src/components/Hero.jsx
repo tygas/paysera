@@ -9,13 +9,13 @@ export default function Hero() {
     <section className="relative pt-20 pb-16 overflow-hidden">
       {/* Parallax decorative orbs */}
       <div ref={bgRef} className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -top-20 -left-20 w-80 h-80 rounded-full bg-violet-600/10 dark:bg-violet-600/10 blur-3xl" />
-        <div className="absolute top-10 right-0 w-60 h-60 rounded-full bg-teal-500/10 dark:bg-teal-400/10 blur-3xl" />
+        <div className="absolute -top-20 -left-20 w-80 h-80 rounded-full bg-red-600/10 dark:bg-red-600/10 blur-3xl" />
+        <div className="absolute top-10 right-0 w-60 h-60 rounded-full bg-amber-500/10 dark:bg-amber-400/10 blur-3xl" />
       </div>
 
       <div ref={ref} className={`transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"}`}>
         {/* Label */}
-        <p className="text-xs font-bold tracking-widest uppercase text-violet-500 dark:text-violet-400 mb-4">
+        <p className="text-xs font-bold tracking-widest uppercase text-red-500 dark:text-red-400 mb-4">
           Paysera Tech — Builder-PO Application
         </p>
 
@@ -45,7 +45,7 @@ export default function Hero() {
             </a>
             <a
               href={`mailto:${profile.email}`}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white transition-colors shadow-md shadow-violet-500/20"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-red-600 hover:bg-red-500 text-white transition-colors shadow-md shadow-red-500/20"
             >
               <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>

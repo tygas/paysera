@@ -14,7 +14,7 @@ function Bar({ pct, color, visible }) {
 
 function LoopDiagram() {
   const steps = methodologySteps;
-  const colors = ["#7c6fff", "#4fd8c4", "#7c6fff", "#4fd8c4"];
+  const colors = ["#dc2626", "#d97706", "#dc2626", "#d97706"];
 
   return (
     <div className="relative flex items-center justify-center py-6">
@@ -27,20 +27,20 @@ function LoopDiagram() {
         {/* Curved arrows connecting boxes */}
         <defs>
           <marker id="arrowPurple" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-            <path d="M0,0 L0,6 L8,3 z" fill="#7c6fff" />
+            <path d="M0,0 L0,6 L8,3 z" fill="#dc2626" />
           </marker>
           <marker id="arrowTeal" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-            <path d="M0,0 L0,6 L8,3 z" fill="#4fd8c4" />
+            <path d="M0,0 L0,6 L8,3 z" fill="#d97706" />
           </marker>
         </defs>
         {/* → Agent to Loop */}
-        <path d="M85,60 C105,45 125,45 140,60" fill="none" stroke="#7c6fff" strokeWidth="1.5" strokeDasharray="4 2" markerEnd="url(#arrowPurple)" opacity="0.7" />
+        <path d="M85,60 C105,45 125,45 140,60" fill="none" stroke="#dc2626" strokeWidth="1.5" strokeDasharray="4 2" markerEnd="url(#arrowPurple)" opacity="0.7" />
         {/* → Loop to Graph */}
-        <path d="M195,60 C215,45 235,45 250,60" fill="none" stroke="#4fd8c4" strokeWidth="1.5" strokeDasharray="4 2" markerEnd="url(#arrowTeal)" opacity="0.7" />
+        <path d="M195,60 C215,45 235,45 250,60" fill="none" stroke="#d97706" strokeWidth="1.5" strokeDasharray="4 2" markerEnd="url(#arrowTeal)" opacity="0.7" />
         {/* → Graph to Skill */}
-        <path d="M305,60 C325,45 340,45 355,60" fill="none" stroke="#7c6fff" strokeWidth="1.5" strokeDasharray="4 2" markerEnd="url(#arrowPurple)" opacity="0.7" />
+        <path d="M305,60 C325,45 340,45 355,60" fill="none" stroke="#dc2626" strokeWidth="1.5" strokeDasharray="4 2" markerEnd="url(#arrowPurple)" opacity="0.7" />
         {/* ↩ Return from Skill back to Agent (bottom arc) */}
-        <path d="M370,70 C370,105 30,105 30,70" fill="none" stroke="#4fd8c4" strokeWidth="1.5" strokeDasharray="4 2" markerEnd="url(#arrowTeal)" opacity="0.5" />
+        <path d="M370,70 C370,105 30,105 30,70" fill="none" stroke="#d97706" strokeWidth="1.5" strokeDasharray="4 2" markerEnd="url(#arrowTeal)" opacity="0.5" />
       </svg>
 
       {/* Nodes */}
@@ -67,7 +67,7 @@ export default function AITools() {
 
   return (
     <section id="ai" className="pt-20">
-      <p className="text-xs font-bold tracking-widest uppercase text-violet-500 dark:text-violet-400 mb-3">AI Stack</p>
+      <p className="text-xs font-bold tracking-widest uppercase text-red-500 dark:text-red-400 mb-3">AI Stack</p>
       <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-8">Tools &amp; Methodology</h2>
 
       {/* Subscription bars */}
@@ -75,7 +75,7 @@ export default function AITools() {
         {aiTools.map(t => (
           <div
             key={t.name}
-            className="group p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-violet-400/50 dark:hover:border-violet-500/40 transition-colors duration-200"
+            className="group p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-red-400/50 dark:hover:border-red-500/40 transition-colors duration-200"
           >
             <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
               <div>
@@ -97,7 +97,7 @@ export default function AITools() {
 
       {/* Working Methodology — Loop diagram */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
-        <p className="text-xs font-bold tracking-widest uppercase text-teal-500 dark:text-teal-400 mb-1">Working Methodology</p>
+        <p className="text-xs font-bold tracking-widest uppercase text-amber-500 dark:text-amber-400 mb-1">Working Methodology</p>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
           Every validated practice becomes a reusable skill — so the process runs correctly every time, without re-explanation.
         </p>

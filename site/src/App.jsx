@@ -10,7 +10,7 @@ import Conditions from "./components/Conditions";
 export default function App() {
   const [dark, toggleTheme] = useTheme();
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 font-sans">
+    <div className="min-h-screen bg-white dark:bg-black text-slate-900 dark:text-slate-100 transition-colors duration-300 font-sans">
       <Nav dark={dark} toggleTheme={toggleTheme} />
       <main className="max-w-3xl mx-auto px-6 pb-24">
         <Hero />

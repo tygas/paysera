@@ -11,21 +11,21 @@ export const aiTools = [
     cost: "€90/mo",
     use: "Primary tool: programming, architecture, skill creation",
     pct: 90,
-    color: "#7c6fff",
+    color: "#dc2626",
   },
   {
     name: "ChatGPT Pro",
     cost: "€20/mo",
     use: "Multi-agent orchestration, code reviews, market analysis",
     pct: 20,
-    color: "#10a37f",
+    color: "#eab308",
   },
   {
     name: "OpenCode Zen + API",
     cost: "pay-as-you-go",
     use: "Evaluating new models, routing simpler tasks cheaper, API experiments",
     pct: 30,
-    color: "#4fd8c4",
+    color: "#d97706",
   },
 ];
 
@@ -72,7 +72,7 @@ export const experience = [
       label: "Architectural decision owned",
       text: "Designed a multi-level org hierarchy where access to any object or folder can be granted or denied per user, group, team, or org level — with whitelist and blacklist rules in the same scope. Also designed the UX for this logic.",
     },
-    color: "#4fd8c4",
+    color: "#d97706",
   },
   {
     id: "usbank",
@@ -89,7 +89,7 @@ export const experience = [
       label: "Three decisions that fixed the release cycle",
       text: "1. Defined feature release-readiness criteria — separated what could ship from what couldn't.\n2. Introduced feature flags — incomplete work stays in the codebase without blocking the release.\n3. Restructured communication channels so each team knew its responsibility and escalation path.",
     },
-    color: "#7c6fff",
+    color: "#dc2626",
   },
   {
     id: "am",
@@ -106,7 +106,7 @@ export const experience = [
       label: "Skill design principle",
       text: "Every validated practice becomes a reusable skill — not to save time once, but so the process runs correctly every time without re-explanation.",
     },
-    color: "#f0a050",
+    color: "#d97706",
   },
 ];
 

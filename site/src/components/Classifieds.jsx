@@ -41,12 +41,12 @@ export default function Classifieds() {
 
   return (
     <section id="classifieds" className="pt-20">
-      <p className="text-xs font-bold tracking-widest uppercase text-violet-500 dark:text-violet-400 mb-3">
+      <p className="text-xs font-bold tracking-widest uppercase text-red-500 dark:text-red-400 mb-3">
         Bonus — Product Idea
       </p>
       <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Paysera Classifieds</h2>
       <div className="flex items-center gap-3 mb-2 flex-wrap">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 text-xs font-semibold">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-semibold">
           Wedge: {classifieds.wedge}
         </span>
       </div>
@@ -57,7 +57,7 @@ export default function Classifieds() {
         href={classifieds.graphUrl}
         target="_blank"
         rel="noreferrer"
-        className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-xl border border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 text-xs font-semibold hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors"
+        className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-xl border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
       >
         <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
           <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
@@ -78,7 +78,7 @@ export default function Classifieds() {
             onClick={() => setTab(t.id)}
             className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
               tab === t.id
-                ? "bg-white dark:bg-slate-800 text-violet-600 dark:text-violet-400 shadow-sm"
+                ? "bg-white dark:bg-slate-800 text-red-600 dark:text-red-400 shadow-sm"
                 : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
             }`}
           >
@@ -124,7 +124,7 @@ export default function Classifieds() {
             <div className="space-y-4">
               {classifieds.offer.steps.map((s, i) => (
                 <div key={i} className="flex gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300 flex items-center justify-center shrink-0">
                     {offerIcons[i]}
                   </div>
                   <div>
@@ -139,7 +139,7 @@ export default function Classifieds() {
 
         {tab === "metric" && (
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-teal-500 dark:text-teal-400 mb-2">North Star</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500 dark:text-amber-400 mb-2">North Star</p>
             <p className="text-base font-semibold text-slate-900 dark:text-white mb-3">{classifieds.metric}</p>
             <p className="text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
               Measures whether the trust and friction improvements actually convert to completed transactions — not just listings created. Secondary signals: photo→publish conversion time, in-product chat usage rate, repeat seller activity.
@@ -151,7 +151,7 @@ export default function Classifieds() {
           <ol className="space-y-4">
             {classifieds.thirtyDays.map((step, i) => (
               <li key={i} className="flex gap-3">
-                <span className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                <span className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
                   {i + 1}
                 </span>
                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{step}</p>

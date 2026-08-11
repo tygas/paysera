@@ -5,11 +5,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        accent: '#7c6fff',
-        teal: '#4fd8c4',
+        accent: '#dc2626',
+        gold: '#d97706',
         surface: {
-          DEFAULT: '#13131a',
-          2: '#1c1c28',
+          DEFAULT: '#0a0a0a',
+          2: '#140800',
         },
       },
       fontFamily: {

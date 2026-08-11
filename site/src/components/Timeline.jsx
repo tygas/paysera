@@ -17,7 +17,7 @@ function Card({ item, index }) {
         style={{ backgroundColor: item.color }}
       />
 
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 hover:border-violet-300 dark:hover:border-violet-700 transition-colors duration-200">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 hover:border-red-300 dark:hover:border-red-700 transition-colors duration-200">
         <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
           <div>
             <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: item.color }}>
@@ -32,7 +32,7 @@ function Card({ item, index }) {
 
         <button
           onClick={() => setOpen(o => !o)}
-          className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1"
+          className="text-xs font-semibold text-red-600 dark:text-red-400 hover:underline flex items-center gap-1"
         >
           {open ? "Less" : "Details"}
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
@@ -71,7 +71,7 @@ function Card({ item, index }) {
 export default function Timeline() {
   return (
     <section id="experience" className="pt-20">
-      <p className="text-xs font-bold tracking-widest uppercase text-violet-500 dark:text-violet-400 mb-3">Career</p>
+      <p className="text-xs font-bold tracking-widest uppercase text-red-500 dark:text-red-400 mb-3">Career</p>
       <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-8">Experience</h2>
 
       <div className="relative">

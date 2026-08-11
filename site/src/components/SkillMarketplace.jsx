@@ -8,7 +8,7 @@ export default function SkillMarketplace() {
 
   return (
     <section id="skills" className="pt-20">
-      <p className="text-xs font-bold tracking-widest uppercase text-violet-500 dark:text-violet-400 mb-3">Claude Code</p>
+      <p className="text-xs font-bold tracking-widest uppercase text-red-500 dark:text-red-400 mb-3">Claude Code</p>
       <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Skills Marketplace</h2>
       <p className="text-sm text-slate-500 dark:text-slate-400 mb-8">
         Each skill encodes a validated process — not documentation, but executable behaviour.
@@ -23,14 +23,14 @@ export default function SkillMarketplace() {
           return (
             <div
               key={i}
-              className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden transition-colors duration-200 hover:border-violet-300 dark:hover:border-violet-700"
+              className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden transition-colors duration-200 hover:border-red-300 dark:hover:border-red-700"
             >
               <button
                 className="w-full flex items-center justify-between px-5 py-4 text-left"
                 onClick={() => setOpen(isOpen ? null : i)}
               >
                 <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-bold bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-300 shrink-0">
+                  <span className="w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-bold bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-300 shrink-0">
                     {i + 1}
                   </span>
                   <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{s.title}</span>

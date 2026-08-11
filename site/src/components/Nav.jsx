@@ -19,7 +19,7 @@ export default function Nav({ dark, toggleTheme }) {
   return (
     <nav className={`sticky top-0 z-50 transition-all duration-300 ${
       scrolled
-        ? "bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800"
+        ? "bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-slate-200 dark:border-zinc-900"
         : "bg-transparent"
     }`}>
       <div className="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between">

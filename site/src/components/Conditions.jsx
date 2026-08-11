@@ -6,7 +6,7 @@ export default function Conditions() {
 
   return (
     <section id="conditions" className="pt-20 pb-4">
-      <p className="text-xs font-bold tracking-widest uppercase text-violet-500 dark:text-violet-400 mb-3">Engagement</p>
+      <p className="text-xs font-bold tracking-widest uppercase text-red-500 dark:text-red-400 mb-3">Engagement</p>
       <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-8">Conditions</h2>
 
       <div
