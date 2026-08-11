@@ -1,0 +1,88 @@
+:root {
+  --bg: #0a0a0f;
+  --surface: #13131a;
+  --surface2: #1c1c28;
+  --border: #2a2a3a;
+  --accent: #7c6fff;
+  --accent2: #4fd8c4;
+  --text: #e8e8f0;
+  --muted: #7a7a9a;
+  --radius: 12px;
+  --max: 900px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+.app { max-width: var(--max); margin: 0 auto; padding: 0 24px 80px; }
+
+section { padding: 72px 0 0; }
+section:first-of-type { padding-top: 40px; }
+
+h1 { font-size: 2.4rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.15; }
+h2 { font-size: 1.4rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 28px; color: var(--text); }
+h3 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+
+.label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+}
+
+.card + .card { margin-top: 12px; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.tag.teal {
+  background: color-mix(in srgb, var(--accent2) 15%, transparent);
+  color: var(--accent2);
+  border-color: color-mix(in srgb, var(--accent2) 30%, transparent);
+}
+
+ul { padding-left: 18px; }
+ul li { margin-bottom: 6px; color: var(--muted); }
+ul li strong { color: var(--text); }
+
+.muted { color: var(--muted); }
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+}
+
+@media (max-width: 600px) {
+  h1 { font-size: 1.8rem; }
+  .app { padding: 0 16px 60px; }
+}
