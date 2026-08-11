@@ -1,0 +1,209 @@
+---
+loop: B
+name: Legal & Compliance Bounds
+goal: Apibrėžti teisinę rėmelę pilotui (GDPR, ginčai, draudžiamos prekės)
+category: Compliance
+duration_days: 14
+parallel_with: [A, C, D]
+
+agents:
+  - name: extract_compliance_docs
+    type: document_search + internal_repo
+    prompt: |
+      Iš Paysera internorinių dokumentų ar viešų šaltinių surask:
+
+      1. **GDPR & Data Protection:**
+         - Kaip Paysera valdo klientų duomenis?
+         - Koki duomenys gali būti naudojami skelbimų platformoje?
+         - Kas yra "sensitive data" ir kaip ją apsaugoti?
+         - Ar reikalingas explicit consent?
+
+      2. **Payment & Escrow Policy:**
+         - Kaip Paysera valdo pinigus ginčų metu?
+         - Kiek laiko laikyti pinigai (laikymo laikotarpis)?
+         - Kas yra "dispute" ir koks resolution process?
+         - Ar yra maximum transaction limit?
+
+      3. **Prohibited Items:**
+         - Kas negali būti parduodama per Paysera?
+         - Ar visos elektronikos kategorijos OK?
+         - Ar stolen goods / counterfeit risk?
+         - Kas reikalingas verification (Serial number, IMEI)?
+
+      4. **Fraud & AML (Anti-Money Laundering):**
+         - Kaip nustatyti susisietusius pardavėjus / pirkėjus?
+         - Koks transaction volume yra "red flag"?
+         - Koks timeout tarp transakcijų?
+
+      5. **Liability & Insurance:**
+         - Kas atsakinga, jei prekė nesurenka/sustabus?
+         - Ar Paysera draudžia produkto klaidas?
+         - Kas yra user responsibility?
+
+      OUTPUT: Ištraukti paragrafai, linkai į dokumentus, citatos.
+
+    input:
+      source_categories:
+        - internal_docs: ["gdpr_policy.md", "dispute_policy.pdf", "payment_terms.md"]
+        - paysera_public: ["https://www.paysera.com/v2/en/"]
+        - legal_templates: "any pre-written legal bounds"
+
+    output_schema: |
+      - category: string (GDPR, Payment, Items, Fraud, Liability)
+      - requirement: string
+      - source_doc: string (file name or URL)
+      - source_quote: string (exact excerpt)
+      - compliance_criticality: "MUST" | "SHOULD" | "NICE"
+      - affected_pilot_flow: string (description)
+
+    success_criteria:
+      critical: ">= 2 categories covered (GDPR + Payment OR Items + Fraud)"
+      required: ">= 3 categories"
+      nice_to_have: "all 5 categories + internal legal review"
+
+    estimated_duration: 5 days
+    dependencies: none
+    owner: "You (document search) + Legal team review"
+
+  - name: conduct_legal_consultation
+    type: stakeholder_interview
+    prompt: |
+      Pokalbis su Paysera Legal / Compliance team.
+
+      AGENDA:
+      1. Pilot scope: elektronikos kategorija, first cohort n=5,
+         max transaction size?
+
+      2. Specific risks:
+         - Can we hold payment in escrow for 7 days?
+         - What's the refund policy if item condition doesn't match?
+         - How do we verify identity / prevent reseller abuse?
+
+      3. Prohibited items (electronics specific):
+         - Stolen goods detection (IMEI blacklist)?
+         - Counterfeit risk (Apple/Samsung authenticity)?
+         - Radiation/hazmat electronics?
+
+      4. Dispute escalation:
+         - Who investigates fraud claims?
+         - What's the SLA?
+         - Is there a chargeback risk to Paysera?
+
+      5. Red flags for AML:
+         - If one seller pushes 100 EUR / day repeatedly?
+         - If 5 sellers suddenly transact same buyer (reseller ring)?
+
+      OUTPUT: Recorded call + approved written bounds.
+
+    input:
+      stakeholders:
+        - "legal@paysera.com"
+        - "compliance@paysera.com"
+        - "fraud@paysera.com"
+      meeting_duration: "60 min"
+      meeting_format: "Zoom + transcript"
+
+    output_schema: |
+      - question: string
+      - answer: string
+      - approver: string (name, email)
+      - follow_up_needed: bool
+      - decision: "approved" | "needs_exception" | "out_of_scope"
+
+    success_criteria:
+      critical: ">= 1 legal meeting (payment/escrow + dispute handling)"
+      required: ">= 2 meetings (add fraud/AML specifics)"
+      nice_to_have: "Legal approval email + signed bounds document"
+
+    estimated_duration: 7 days (scheduling + 2–3 meetings)
+    dependencies: "extract_compliance_docs PARTIAL (enough to brief legal)"
+    owner: "You (scheduling) + Legal team (answering)"
+
+  - name: map_to_pilot_scope
+    type: requirements_synthesis
+    prompt: |
+      Iš `extract_compliance_docs` + `conduct_legal_consultation` output'ų:
+
+      1. **PILOT BOUNDARIES — MUST HAVE:**
+         - Transaction size: min/max EUR
+         - Escrow hold period: X days
+         - Dispute resolution time: Y days
+         - Refund policy: Z conditions
+
+      2. **PROHIBITED ITEMS — CLEAR LIST:**
+         - [Stolen goods rules]
+         - [Counterfeit detection methods]
+         - [Hazmat / radiation rules]
+         - [Exceptions — jei kurie elektronikos subcategories negatim]
+
+      3. **IDENTITY & VERIFICATION:**
+         - Min verification level (email + phone OR national ID)?
+         - IMEI/Serial number check: mandatory?
+         - Repeat seller privileges (fast checkout)?
+
+      4. **RED FLAGS FOR PILOT:**
+         - Transaction velocity: max X per day per seller?
+         - Clustering detection: "many different sellers, same buyer" = flag?
+         - Timeout between sales: min X hours?
+
+      5. **ESCALATION PATHS:**
+         - User disputes item → goes to legal@paysera
+         - Fraud signal triggers → goes to fraud@paysera
+         - AML red flag → goes to compliance@paysera
+
+      OUTPUT: "Pilot Legal Checklist" markdown + JSON schema.
+
+    input:
+      compliance_extracts: "[from extract_compliance_docs output]"
+      legal_decisions: "[from conduct_legal_consultation output]"
+      pilot_category: "used_electronics"
+      pilot_cohort_size: 5
+
+    output_schema: |
+      - category: string (Transaction, Items, Identity, Redflags, Escalation)
+      - rule: string
+      - applicability: "critical" | "warning" | "informational"
+      - verification_method: string (how to enforce)
+      - responsible_team: string (Legal, Fraud, Compliance, PO)
+      - pilot_impact: string (what changes if we don't follow?)
+
+    success_criteria:
+      critical: ">= 3 rules per category"
+      required: "5 categories * 3 rules = 15 total rules + signed approval"
+      nice_to_have: "automated enforcement (flags in code) designed"
+
+    estimated_duration: 3 days (DAY 11–14)
+    dependencies: "extract_compliance_docs + conduct_legal_consultation PARTIAL"
+    owner: "You + Legal team co-author"
+
+exit_conditions:
+  completion:
+    - metric: "compliance_categories_covered"
+      critical: ">= 2 (GDPR + Payment)"
+      required: ">= 3 (add Items or Fraud)"
+      nice_to_have: "all 5"
+
+    - metric: "legal_meetings_completed"
+      critical: ">= 1 recorded + minutes"
+      required: ">= 2 meetings + approval email"
+
+    - metric: "pilot_checklist_items"
+      critical: ">= 10 rules documented"
+      required: ">= 15 rules + signed approval"
+      nice_to_have: ">= 20 rules with enforcement code examples"
+
+    - metric: "legal_sign_off"
+      critical: "email from legal@paysera OR compliance@paysera"
+      required: "email + explicit approval for pilot scope"
+
+  timeline:
+    deadline: "DAY 14 23:59 UTC"
+    warning_threshold: "DAY 12 18:00 UTC — if no legal meetings scheduled"
+    fail_threshold: "DAY 16 09:00 UTC — if not legal-approved"
+
+  escalation:
+    if_behind_schedule: |
+      - DAY 10: No legal response → escalate to CEO/Kostas
+      - DAY 12: <10 rules documented → extend DAY 15, compress Loop-E
+      - DAY 14: No sign-off → mark Loop-B as "pending approval",
+        proceed with Loop-E draft (pending final legal review)

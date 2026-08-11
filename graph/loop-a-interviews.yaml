@@ -1,0 +1,275 @@
+---
+loop: A
+name: Domain Expert Interviews
+goal: Suprasti pardavėjo/pirkėjo kelią ir problemas realiame kontekste
+category: Research
+duration_days: 14
+parallel_with: [B, C, D]
+
+agents:
+  - name: find_contacts
+    type: web_search + linkedin
+    prompt: |
+      Surask 15–20 žmonių iš šių šaltinių, kurie NESENIAI
+      pardavė arba pirko naudotą telefoną/nešiojamąjį kompiuterį:
+
+      1. LinkedIn — "recently sold used phone" arba "bought refurbished laptop"
+      2. Facebook Groups — Lietuvos skelbimų grupės
+      3. Foruma.lt — "parduota elektronika" skyrius (>7 days, <30 days)
+      4. TikTok — #telefono_pardavimas / #kompas_parduodu
+
+      Išrašyk kontaktus:
+      - vardas (arba handle)
+      - platform
+      - email / phone / DM link
+      - grubul indai kai pardavimas/pirkinys (7–30 dienų atgal)
+
+      Tikslas: 15 skambučio naudotojų, kurie tiesiai patvirtino pardavimą/pirkim.
+
+    input:
+      category: "used_electronics"
+      min_days_since_activity: 7
+      max_days_since_activity: 30
+      target_count: 15
+
+    output_schema: |
+      - name: string
+      - platform: enum[LinkedIn, Facebook, Foruma.lt, TikTok]
+      - contact_method: email | phone | dm_link
+      - contact_value: string
+      - activity_date: YYYY-MM-DD
+      - activity_type: "sold" | "bought"
+      - product_category: "phone" | "laptop" | "other_electronics"
+      - call_confirmation: bool (optional — jei jau susisiekei)
+
+    success_criteria:
+      critical: "n >= 12"
+      required: "n >= 15"
+      nice_to_have: "n >= 20"
+
+    estimated_duration: 3 days
+    dependencies: none
+    owner: "You (Claude AI assistant)"
+
+  - name: schedule_calls
+    type: outreach + calendar_sync
+    prompt: |
+      Iš find_contacts() output naudotojams siųsk:
+
+      EMAIL TEMPLATE:
+      ---
+      Tema: Greitai jūsų klausimas apie [iPhone 13] pardavimą
+
+      Sveiki [vardas],
+
+      Mačiau, kad neseniai pardavėte [produktas]. Paysera
+      rengia naują pardavimo platformą ir ieško išmintingų
+      žmonių, kurie dalyvauto 45 min pasikalbėjime apie
+      jūsų patirtį — nuo nuotraukos iki mokėjimo.
+
+      Gausit [incentive — pvz. 10 EUR cashback] ir padėsite
+      milijonams išvengti sukčiavimo.
+
+      Laisvieji šneliai: [calendar link].
+
+      Dėkui,
+      Eimantas
+      ---
+
+      Seka:
+      1. Email siuntimas (batched, 3 per dieną)
+      2. 48h po email — reminder (jei neatsako)
+      3. Handbook — backup — jei jie norėtų Zoom/Phone
+
+      Tikslas: 12–15 patvirtintų skambučių per 7 dienas.
+
+    input:
+      contacts_list: "[from find_contacts output]"
+      email_template: "call_request_with_incentive"
+      confirmation_method: "calendar_booking | email_reply"
+      reminder_delay_hours: 48
+
+    output_schema: |
+      - contact_id: string
+      - scheduled_date: YYYY-MM-DD HH:MM
+      - confirmation_status: "confirmed" | "pending" | "declined"
+      - call_recording_consent: bool
+      - timezone: string
+      - preferred_language: "lt" | "en"
+
+    success_criteria:
+      critical: ">= 10 confirmed calls"
+      required: ">= 12 confirmed calls"
+      nice_to_have: ">= 15 confirmed calls + video option"
+
+    estimated_duration: 7 days (calls spread across DAY 4–12)
+    dependencies: "find_contacts COMPLETE"
+    owner: "You"
+
+  - name: conduct_interviews
+    type: zoom_recording + note_taking
+    prompt: |
+      Skambinti pagal `schedule_calls` grafiką. Kiekvieno pokalbio struktūra:
+
+      INTRO (5 min):
+      - Pristatymas, GDPR + recording consent
+      - "Norime suprasti, kaip jūs pardavėte [produktą]"
+
+      PURCHASING / SELLING (15–20 min):
+      - Kur radote skelbimą / kaip paskelbeide? (platform friction?)
+      - Kaip susitarėte su pirkėju / pardavėju?
+      - Kaip atsisakė mokėti / kaip pasiūlėte kainą?
+      - Kokią informaciją norėjote, bet jos nebuvo?
+
+      PAYMENT & LOGISTICS (10–15 min):
+      - Kaip atsiskaitė? (cash, bank transfer, trusted payment?)
+      - Ar yra baimės, jog pinigai nesugrįš / prekė nepasikels?
+      - Kiek laiko prireikė pristatyti / gauti?
+
+      TRUST & FRAUD (5–10 min):
+      - Ar kada norėjote susitikti asmeniškai?
+      - Ar pasitikėjote pardavėju / pirkėju nuo pirmo pokalbio?
+      - Ar žinote apie sukčiavimą / rūpestingai grį?
+
+      CLOSE (5 min):
+      - Kas jums sutrukdė / padėjo daugiausia?
+      - Ką pasiūlytumete tokiam produktui?
+
+      OUTPUT: Video recording (transcribed) + markdown notes
+
+    input:
+      scheduled_calls: "[from schedule_calls output]"
+      recording_tool: "Zoom native OR Riverside.fm (with transcription)"
+      template: "structured_interview_checklist"
+
+    output_schema: |
+      - call_id: string
+      - contact_name: string
+      - recording_url: string
+      - transcript_text: string (auto-generated, hand-corrected)
+      - notes_markdown: string
+      - topics_covered: ["platform_friction", "payment", "trust", "logistics", ...]
+      - key_quotes: [string array, best 3–5 excerpts]
+      - duration_minutes: integer
+      - follow_up_needed: bool
+
+    success_criteria:
+      critical: ">= 8 calls completed, >= 4 topics per call"
+      required: ">= 12 calls, >= 5 topics per call"
+      nice_to_have: ">= 15 calls, 6+ topics, video highlights captured"
+
+    estimated_duration: 10 days (DAY 4–14, spread)
+    dependencies: "schedule_calls CONFIRMED"
+    owner: "You"
+
+  - name: extract_insights
+    type: data_synthesis
+    prompt: |
+      Iš `conduct_interviews` output'ų (transcripts + notes):
+
+      1. TEMA PO TEMAI, iš 12+ pokalbių ištraukti dažniausias problemas:
+
+         Platform friction:
+         - "where did you find the listing?" → platforms used (OLX, Paysera, FB)
+         - "how long to find the right buyer/seller?" → time_to_match metric
+         - Grėsmė: Jei visi sako "I googled + found external link",
+           tai per nuorodą nukreipti per Paysera yra problema
+
+         Payment trust:
+         - "did you fear the buyer won't pay?" → payment_risk_perception
+         - "would you use escrow / protected payment?" → willingness_for_safeguard
+         - Grėsmė: Jei > 50% bijo, product reikalinga guardrail
+
+         Logistics & fraud:
+         - "how did you verify the item's condition?" → verification_method
+         - "did you receive the package OK?" → fraud_incident_count
+         - "would you recognize a scammer upfront?" → risk_literacy
+
+         Trust signals:
+         - "what made you trust this person?" → trust_triggers
+         - Klausimas: Tapatybė? Kainos history? Reviews?
+
+      2. CROSS-CALL PATTERNS:
+         - Kuri problema pikami keletą kartų? → product_must_have
+         - Kuri problema viena dvi kartų? → nice_to_have
+         - Kuri problema nulio kartų? → out_of_scope
+
+      3. PERSONA DRAFT:
+         Iš pokalbių ~ sukurti draft persona:
+         "Repeat seller, 35–50, pasitiki Paysera, bet nori
+         fast checkout ir disputes atsigynimo"
+
+      OUTPUT: Structured JSON + Markdown summary
+
+    input:
+      transcripts: "[from conduct_interviews output]"
+      templates:
+        - platform_friction_questions
+        - payment_trust_questions
+        - logistics_fraud_questions
+        - trust_signals_questions
+
+    output_schema: |
+      themes:
+        - name: string (e.g., "payment_trust")
+          mentions: integer
+          representative_quotes: [string]
+          severity: "critical" | "high" | "medium" | "low"
+
+      persona_draft:
+        name: string
+        age_range: string
+        seller_type: string
+        key_pain_points: [string]
+        trust_triggers: [string]
+        willingness_for_safeguard: bool
+
+      product_implications: [string]
+
+    success_criteria:
+      critical: "themes extracted from >= 8 calls"
+      required: "themes from >= 12 calls + persona draft"
+      nice_to_have: "A/B personas (repeat vs first-time seller)"
+
+    estimated_duration: 3 days (DAY 12–14)
+    dependencies: "conduct_interviews >= 8 COMPLETE"
+    owner: "You (synthesis) + Claude AI (pattern detection)"
+
+exit_conditions:
+  completion:
+    - metric: "interview_count"
+      critical: ">= 12"
+      required: ">= 15"
+      nice_to_have: ">= 20"
+
+    - metric: "topics_per_interview"
+      critical: ">= 4 (platform, payment, logistics, trust)"
+      required: ">= 5"
+      nice_to_have: ">= 6 (add fraud, verification)"
+
+    - metric: "transcript_quality"
+      critical: "80% word accuracy (auto transcription acceptable)"
+      required: "95% accuracy (hand-corrected)"
+      nice_to_have: "100% + timestamps"
+
+    - metric: "theme_saturation"
+      definition: "no new themes found in last 3 consecutive interviews"
+      critical: "FALSE → keep going"
+      required: "TRUE → sufficient data"
+
+    - metric: "persona_draft"
+      critical: "drafted from >= 5 calls"
+      required: "validated across >= 10 calls"
+
+  timeline:
+    deadline: "DAY 14 23:59 UTC"
+    warning_threshold: "DAY 12 18:00 UTC — if not >= 10 calls scheduled"
+    fail_threshold: "DAY 15 09:00 UTC — if not >= 8 calls complete"
+
+  escalation:
+    if_behind_schedule: |
+      - DAY 8: < 5 calls scheduled → launch "parallel call 2"
+        (different channel: Slack communities, Reddit, YouTube comments)
+      - DAY 11: < 8 calls completed → offer 2x incentive (20 EUR)
+      - DAY 13: < 10 calls completed → extend Loop-A to DAY 17,
+        compress Loop-E preparation

@@ -1,0 +1,223 @@
+---
+loop: C
+name: Photo-to-Listing Workflow
+goal: Testuoti AI workflow — nuo nuotraukos → struktūruoto aprašymo + kainos
+category: Product Engineering
+duration_days: 14
+parallel_with: [A, B, D]
+
+agents:
+  - name: collect_test_photos
+    type: data_collection
+    prompt: |
+      Surink 10 test nuotraukų naudotų elektronikos prekių.
+      Tikslas: diverse quality — ne tik nuotraukos, kurios veiks,
+      bet ir edge cases (blurry, bad lighting, multiple angles).
+
+      ACQUISITION CHANNELS:
+      1. **Paysera archyvas** — jei yra istorinių skelbimų su nuotraukomis
+      2. **Public marketplaces** — Vinted, eBay listings (s/o license)
+      3. **Sample data generators** — synthetic photos (if needed)
+      4. **Your own devices** — iPhone 12, MacBook Pro photos (various conditions)
+
+      MATRIX — 10 photos spread across:
+      - Device types: 5 phones, 3 laptops, 2 tablets
+      - Condition: 3 "mint", 4 "good", 2 "fair" (cracked/worn), 1 "poor" (very damaged)
+      - Photography quality: 3 "professional" (clear, multiple angles),
+                            5 "consumer" (phone photo),
+                            2 "poor" (blurry, bad lighting)
+
+      OUTPUT: Folder /paysera/graph/test-data/photos/ + CSV index.
+
+    input:
+      target_count: 10
+      devices:
+        - phones: 5
+        - laptops: 3
+        - tablets: 2
+      condition_distribution:
+        mint: 3
+        good: 4
+        fair: 2
+        poor: 1
+
+    output_schema: |
+      - photo_id: string (e.g., "iphone12_mint_001")
+      - device_type: "phone" | "laptop" | "tablet"
+      - device_model: string (e.g., "iPhone 12 Pro")
+      - condition: "mint" | "good" | "fair" | "poor"
+      - photo_quality: "professional" | "consumer" | "poor"
+      - file_path: string
+      - human_ground_truth: {title, description, price_range_EUR}
+
+    success_criteria:
+      critical: "n >= 8"
+      required: "n = 10"
+      nice_to_have: "n >= 12 (with outliers like damaged/counterfeit-suspicious)"
+
+    estimated_duration: 3 days
+    dependencies: none
+    owner: "You (collection + CSV indexing)"
+
+  - name: run_photo_to_listing_ai
+    type: ai_workflow_execution
+    prompt: |
+      Untuk setiap nuotrauka iš `collect_test_photos`:
+
+      1. **INPUT:** photo file
+      2. **AI PIPELINE:**
+         - Image recognition: "kaip nustatyti produkto modelį?"
+         - LLM generation: "iš modelio + nuotraukos aprašyti prekę"
+         - Price inference: "pagal modelį + būklę → estimated price range EUR"
+
+      3. **OUTPUT SCHEMA:**
+         {
+           title: string (e.g., "iPhone 12 Pro, 128GB, Space Gray, Mint"),
+           description: string (2–3 sakiniai, AI-generated),
+           price_range: {min_EUR: int, max_EUR: int},
+           condition_detected: "mint" | "good" | "fair" | "poor" | "unknown",
+           confidence: float (0–1)
+         }
+
+      4. **PROMPT ITERATION:**
+         - v1: "Describe this used phone for sale"
+         - v2: "Describe this used [device] for a marketplace. Include condition, specs, and why buyer should trust"
+         - v3: "You are a professional seller. Describe this [device]..."
+
+         Testuoki v1 → v2 → v3, compare descriptions.
+
+      5. **QUALITY CHECKS:**
+         - Title ≤ 100 chars? (marketplace constraint)
+         - Description without typos? (LLM hallucinations?)
+         - Price range realistic? (vs market data)
+         - Condition match with ground truth?
+
+      OUTPUT: CSV + comparison matrix (v1 vs v2 vs v3).
+
+    input:
+      photos_index: "[from collect_test_photos output]"
+      ai_pipeline:
+        image_recognition: "Claude Vision API"
+        llm_generation: "Claude Haiku 4.5"
+        price_inference: "rule-based (device model + condition table)"
+      prompt_versions: 3
+
+    output_schema: |
+      - photo_id: string
+      - prompt_version: "v1" | "v2" | "v3"
+      - title: string
+      - description: string
+      - price_min_EUR: integer
+      - price_max_EUR: integer
+      - condition_detected: string
+      - confidence: float
+      - quality_checks:
+          title_length_ok: bool
+          no_typos: bool
+          price_realistic: bool
+          condition_match: bool (vs ground truth)
+
+    success_criteria:
+      critical: "8/10 photos → AI output generated"
+      required: "10/10 photos, 3 prompt versions tested"
+      nice_to_have: "10/10 photos + A/B human scoring (which prompt version did sellers prefer?)"
+
+    estimated_duration: 5 days (DAY 4–8: v1, DAY 9–11: v2, DAY 12–14: v3)
+    dependencies: "collect_test_photos COMPLETE"
+    owner: "You (prompt engineering) + Claude AI (generation + vision)"
+
+  - name: quality_check_outputs
+    type: human_review + metrics
+    prompt: |
+      Iš `run_photo_to_listing_ai` output'ų:
+
+      1. **MANUAL REVIEW (žmogus — tu ar early seller):**
+         - Ar aprašymas tikslus? (matches nuotrauka)
+         - Ar aprašymas patrauklus? (would you click as buyer?)
+         - Ar kaina realistiška? (vs eBay, Vinted, Facebook comparables)
+         - Ar aprašymas gali būti "AI-generated" obvious? (trust issue)
+
+      2. **METRICS:**
+         - title_accuracy: % of correct device model/specs
+         - description_clarity: readability score (Flesch–Kincaid)
+         - price_deviation: avg % difference vs market comparable
+         - condition_match: % correct condition detection
+
+      3. **EDGE CASE ANALYSIS:**
+         - Blurry photos: did AI still recognize device?
+         - Damaged devices: did AI flag condition accurately?
+         - Counterfeit risk (if suspicious): did AI mention?
+
+      4. **PROMPT WINNER:**
+         - Kuri v1/v2/v3 gaviausiai naudoti?
+         - Why? (most natural, most persuasive, most accurate?)
+
+      OUTPUT: Quality report + final prompt selection.
+
+    input:
+      ai_outputs: "[from run_photo_to_listing_ai output]"
+      review_dimensions:
+        - accuracy
+        - clarity
+        - realism
+        - trustworthiness
+      comparison_data: "market prices from eBay/Vinted API"
+
+    output_schema: |
+      - photo_id: string
+      - dimension: string
+      - score: integer (1–10)
+      - comment: string
+      - passes_quality_gate: bool
+
+      metrics_summary:
+        overall_title_accuracy: float (%)
+        overall_description_clarity: float (0–100 Flesch score)
+        price_deviation_avg: float (%)
+        condition_match_rate: float (%)
+
+      recommended_prompt_version: string
+
+    success_criteria:
+      critical: ">= 8/10 photos pass quality (≥7/10 score)"
+      required: "all 10/10 pass, avg score ≥7"
+      nice_to_have: "avg score ≥8, A/B testing with real sellers completed"
+
+    estimated_duration: 3 days (DAY 12–14)
+    dependencies: "run_photo_to_listing_ai COMPLETE"
+    owner: "You (human review) + Claude AI (metrics automation)"
+
+exit_conditions:
+  completion:
+    - metric: "test_photos_count"
+      critical: "n >= 8"
+      required: "n = 10"
+
+    - metric: "ai_output_generation"
+      critical: ">= 8 photos with outputs"
+      required: "all 10 photos, 3 prompt versions each"
+
+    - metric: "quality_review_complete"
+      critical: ">= 8 photos reviewed"
+      required: "all 10 + metrics computed"
+
+    - metric: "average_quality_score"
+      critical: ">= 6/10"
+      required: ">= 7/10"
+      nice_to_have: ">= 8/10"
+
+    - metric: "prompt_version_selected"
+      critical: "one version recommended"
+      required: "with rationale document + seller preference data"
+
+  timeline:
+    deadline: "DAY 14 23:59 UTC"
+    warning_threshold: "DAY 10 18:00 UTC — if < 5 photos tested with v1"
+    fail_threshold: "DAY 16 09:00 UTC — if not all photos reviewed"
+
+  escalation:
+    if_behind_schedule: |
+      - DAY 8: < 8 photos in AI pipeline → use synthetic photos
+      - DAY 12: < 8 reviews complete → focus on top 8, document edge cases for v2
+      - DAY 14: quality score < 6 → flag as "requires UX simplification",
+        extend Loop-C to DAY 17, compress Loop-E

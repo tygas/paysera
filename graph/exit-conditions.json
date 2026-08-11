@@ -1,0 +1,355 @@
+{
+  "pilot": {
+    "name": "Paysera Classifieds 30-Day Pilot",
+    "category": "used_electronics",
+    "duration_days": 30,
+    "pilot_start_date": "TBD",
+    "pilot_end_date": "TBD",
+    "status": "planning",
+    "last_updated": "2026-08-11"
+  },
+
+  "loop_a": {
+    "name": "Domain Expert Interviews",
+    "status": "not_started",
+    "deadline": "DAY 14 23:59 UTC",
+    "warning_threshold": "DAY 12 18:00 UTC",
+    "fail_threshold": "DAY 15 09:00 UTC",
+    "exit_conditions": {
+      "interview_count": {
+        "critical": ">= 12",
+        "required": ">= 15",
+        "nice_to_have": ">= 20",
+        "current": 0,
+        "status": "not_started"
+      },
+      "topics_per_interview": {
+        "critical": ">= 4",
+        "required": ">= 5",
+        "nice_to_have": ">= 6",
+        "current": 0,
+        "status": "not_started"
+      },
+      "transcript_quality": {
+        "critical": "80% accuracy (auto)",
+        "required": "95% accuracy (corrected)",
+        "nice_to_have": "100% with timestamps",
+        "current": "N/A",
+        "status": "not_started"
+      },
+      "theme_saturation": {
+        "definition": "no new themes in last 3 consecutive interviews",
+        "critical": false,
+        "required": true,
+        "current": false,
+        "status": "not_started"
+      },
+      "persona_draft": {
+        "critical": "drafted from >= 5 calls",
+        "required": "validated across >= 10 calls",
+        "current": false,
+        "status": "not_started"
+      }
+    },
+    "agents": [
+      "find_contacts",
+      "schedule_calls",
+      "conduct_interviews",
+      "extract_insights"
+    ],
+    "output_files": [
+      "graph/loop-a-interviews/output/contacts.csv",
+      "graph/loop-a-interviews/output/call_schedule.json",
+      "graph/loop-a-interviews/output/transcripts/",
+      "graph/loop-a-interviews/output/insights.json"
+    ],
+    "escalation": {
+      "day_8_below_5_calls_scheduled": "Launch parallel call 2 (different channels)",
+      "day_11_below_8_completed": "Offer 2x incentive (20 EUR)",
+      "day_13_below_10_completed": "Extend to DAY 17, compress Loop-E"
+    }
+  },
+
+  "loop_b": {
+    "name": "Legal & Compliance Bounds",
+    "status": "not_started",
+    "deadline": "DAY 14 23:59 UTC",
+    "warning_threshold": "DAY 12 18:00 UTC",
+    "fail_threshold": "DAY 16 09:00 UTC",
+    "exit_conditions": {
+      "compliance_categories_covered": {
+        "critical": ">= 2 (GDPR + Payment)",
+        "required": ">= 3 (add Items or Fraud)",
+        "nice_to_have": "all 5 (GDPR, Payment, Items, Fraud, Liability)",
+        "current": 0,
+        "status": "not_started"
+      },
+      "legal_meetings_completed": {
+        "critical": ">= 1 recorded + minutes",
+        "required": ">= 2 meetings + approval email",
+        "nice_to_have": ">= 3 with follow-ups",
+        "current": 0,
+        "status": "not_started"
+      },
+      "pilot_checklist_items": {
+        "critical": ">= 10 rules documented",
+        "required": ">= 15 rules + signed approval",
+        "nice_to_have": ">= 20 rules with enforcement code",
+        "current": 0,
+        "status": "not_started"
+      },
+      "legal_sign_off": {
+        "critical": "email from legal@paysera OR compliance@paysera",
+        "required": "email + explicit approval for pilot scope",
+        "current": false,
+        "status": "not_started"
+      }
+    },
+    "agents": [
+      "extract_compliance_docs",
+      "conduct_legal_consultation",
+      "map_to_pilot_scope"
+    ],
+    "output_files": [
+      "graph/loop-b-legal/output/compliance_extracts.json",
+      "graph/loop-b-legal/output/legal_consultation_notes.md",
+      "graph/loop-b-legal/output/pilot_checklist.json",
+      "graph/loop-b-legal/output/legal_sign_off.eml"
+    ],
+    "escalation": {
+      "day_10_no_response": "Escalate to CEO/Kostas",
+      "day_12_below_10_rules": "Extend DAY 15, compress Loop-E",
+      "day_14_no_sign_off": "Mark as pending, proceed with draft"
+    }
+  },
+
+  "loop_c": {
+    "name": "Photo-to-Listing Workflow",
+    "status": "not_started",
+    "deadline": "DAY 14 23:59 UTC",
+    "warning_threshold": "DAY 10 18:00 UTC",
+    "fail_threshold": "DAY 16 09:00 UTC",
+    "exit_conditions": {
+      "test_photos_count": {
+        "critical": "n >= 8",
+        "required": "n = 10",
+        "nice_to_have": "n >= 12 with outliers",
+        "current": 0,
+        "status": "not_started"
+      },
+      "ai_output_generation": {
+        "critical": ">= 8 photos with outputs",
+        "required": "all 10 photos, 3 prompt versions",
+        "nice_to_have": "10 + A/B testing with real sellers",
+        "current": 0,
+        "status": "not_started"
+      },
+      "quality_review_complete": {
+        "critical": ">= 8 photos reviewed",
+        "required": "all 10 + metrics computed",
+        "nice_to_have": "10 + seller preference data",
+        "current": 0,
+        "status": "not_started"
+      },
+      "average_quality_score": {
+        "critical": ">= 6/10",
+        "required": ">= 7/10",
+        "nice_to_have": ">= 8/10",
+        "current": 0,
+        "status": "not_started"
+      },
+      "prompt_version_selected": {
+        "critical": "one version recommended",
+        "required": "with rationale + seller preference data",
+        "current": "none",
+        "status": "not_started"
+      }
+    },
+    "agents": [
+      "collect_test_photos",
+      "run_photo_to_listing_ai",
+      "quality_check_outputs"
+    ],
+    "output_files": [
+      "graph/loop-c-photo/test-data/photos/",
+      "graph/loop-c-photo/output/photo_index.csv",
+      "graph/loop-c-photo/output/ai_outputs.json",
+      "graph/loop-c-photo/output/quality_report.md",
+      "graph/loop-c-photo/output/prompt_selection.json"
+    ],
+    "escalation": {
+      "day_8_below_8_photos": "Use synthetic photos",
+      "day_12_below_8_reviews": "Focus top 8, document edge cases for v2",
+      "day_14_quality_below_6": "Flag as requiring UX simplification, extend to DAY 17"
+    }
+  },
+
+  "loop_d": {
+    "name": "Repeat Seller Pattern & Recruitment",
+    "status": "not_started",
+    "deadline": "DAY 14 23:59 UTC",
+    "warning_threshold": "DAY 10 18:00 UTC",
+    "fail_threshold": "DAY 15 09:00 UTC",
+    "exit_conditions": {
+      "eligible_sellers_found": {
+        "critical": ">= 20",
+        "required": ">= 50",
+        "nice_to_have": ">= 100 with sub-segments",
+        "current": 0,
+        "status": "not_started"
+      },
+      "seller_profiles_enriched": {
+        "critical": ">= 15",
+        "required": ">= 20",
+        "nice_to_have": ">= 20 with 90%+ completeness",
+        "current": 0,
+        "status": "not_started"
+      },
+      "cohort_members_confirmed": {
+        "critical": ">= 4 with consent",
+        "required": ">= 5 with consent + contact info",
+        "nice_to_have": ">= 7 (includes backup)",
+        "current": 0,
+        "status": "not_started"
+      },
+      "cohort_profile_documented": {
+        "critical": "basic summary (size, categories)",
+        "required": "detailed summary + personas",
+        "nice_to_have": "summary + personas + motivation breakdown",
+        "current": false,
+        "status": "not_started"
+      }
+    },
+    "agents": [
+      "query_paysera_transactions",
+      "enrich_seller_profiles",
+      "recruit_pilot_cohort",
+      "analyze_cohort_profile"
+    ],
+    "output_files": [
+      "graph/loop-d-sellers/output/eligible_sellers.csv",
+      "graph/loop-d-sellers/output/enriched_profiles.json",
+      "graph/loop-d-sellers/output/recruitment_log.json",
+      "graph/loop-d-sellers/output/cohort_profile.json"
+    ],
+    "escalation": {
+      "day_8_below_20_eligible": "Broaden filters (lower min_value or include 1-tx sellers)",
+      "day_11_below_3_confirmed": "Increase incentive (50 EUR) or personal call",
+      "day_13_below_4_confirmed": "Extend to DAY 17 or proceed with 4"
+    }
+  },
+
+  "loop_e": {
+    "name": "Synthesis & Pilot Brief",
+    "status": "not_started",
+    "deadline": "DAY 19 23:59 UTC (CEO presentation DAY 20)",
+    "warning_threshold": "DAY 17 18:00 UTC",
+    "fail_threshold": "DAY 19 18:00 UTC",
+    "depends_on": ["loop_a", "loop_b", "loop_c", "loop_d"],
+    "exit_conditions": {
+      "synthesis_complete": {
+        "critical": "all 4 loop outputs integrated",
+        "required": "synthesis + 1-page summary",
+        "nice_to_have": "synthesis + risk matrix + mitigation roadmap",
+        "current": false,
+        "status": "not_started"
+      },
+      "persona_created": {
+        "critical": "1 persona drafted",
+        "required": "detailed + cohort alignment",
+        "nice_to_have": "2–3 personas (casual vs professional)",
+        "current": false,
+        "status": "not_started"
+      },
+      "workflow_checklist_complete": {
+        "critical": "6-step checklist drafted",
+        "required": "detailed checklist + FAQ",
+        "nice_to_have": "checklist + screenshots + video",
+        "current": false,
+        "status": "not_started"
+      },
+      "pilot_brief_complete": {
+        "critical": "draft brief with all sections",
+        "required": "ready for internal review",
+        "nice_to_have": "ready for board presentation",
+        "current": false,
+        "status": "not_started"
+      },
+      "internal_review": {
+        "critical": "reviewed by you",
+        "required": "reviewed by CTO + Legal (optional)",
+        "current": false,
+        "status": "not_started"
+      },
+      "executive_readiness": {
+        "critical": "can be presented to CEO",
+        "required": "feedback incorporated, final version",
+        "current": false,
+        "status": "not_started"
+      }
+    },
+    "agents": [
+      "synthesize_all_outputs",
+      "create_persona",
+      "generate_workflow_checklist",
+      "draft_pilot_brief"
+    ],
+    "output_files": [
+      "graph/loop-e-synthesis/output/synthesis.json",
+      "graph/loop-e-synthesis/output/persona.md",
+      "graph/loop-e-synthesis/output/workflow_checklist.md",
+      "graph/loop-e-synthesis/output/pilot_brief.md",
+      "graph/loop-e-synthesis/output/pilot_brief.pdf"
+    ],
+    "escalation": {
+      "day_16_no_synthesis": "Compress to 2 days, skip appendices",
+      "day_18_brief_not_drafted": "Present skeleton + raw data to CTO",
+      "day_19_not_reviewed": "Present as draft, internal feedback pending"
+    }
+  },
+
+  "timeline_summary": {
+    "week_1": {
+      "description": "DAY 1–7: Loop initiation (A, B, C, D parallel)",
+      "milestones": [
+        "Loop-A: Contacts collected (n=15+)",
+        "Loop-B: Docs extracted, legal meetings scheduled",
+        "Loop-C: Test photos collected (n=10)",
+        "Loop-D: Eligible sellers identified (n=50+)"
+      ]
+    },
+    "week_2": {
+      "description": "DAY 8–14: Loop execution continues",
+      "milestones": [
+        "Loop-A: Interviews conducted (8–12 complete)",
+        "Loop-B: Legal constraints documented",
+        "Loop-C: AI outputs generated + tested",
+        "Loop-D: Cohort recruitment (5 confirmed)"
+      ]
+    },
+    "week_3": {
+      "description": "DAY 15–21: Loop-E synthesis + brief preparation",
+      "milestones": [
+        "Loop-E: Synthesis complete (DAY 15–16)",
+        "Loop-E: Brief drafted (DAY 17–18)",
+        "Loop-E: Internal review (DAY 18–19)",
+        "CEO presentation ready (DAY 20)"
+      ]
+    },
+    "week_4": {
+      "description": "DAY 22–30: Pilot launch prep",
+      "milestones": [
+        "Feedback incorporation (5–7 days)",
+        "Platform onboarding (2–3 days)",
+        "Concierge pilot START"
+      ]
+    }
+  },
+
+  "global_constraints": {
+    "critical_path": "Loop-A + Loop-B + Loop-C + Loop-D (parallel) → Loop-E",
+    "shortest_possible_duration": "19 days (if all loops hit 'required' level)",
+    "risk_mitigation": "If any loop fails, compress Loop-E or delay CEO presentation",
+    "daily_sync_recommended": true
+  }
+}

@@ -1,0 +1,500 @@
+---
+loop: E
+name: Synthesis & Pilot Brief Generation
+goal: Iš A+B+C+D rezultatų sukurti koherentišką 30-Day Pilot Brief
+category: Documentation & Strategy
+duration_days: 5
+parallel_with: none (sequential, starts after A, B, C, D COMPLETE)
+depends_on_completion:
+  - loop-a: "conduct_interviews agent COMPLETE + insights extracted"
+  - loop-b: "map_to_pilot_scope agent COMPLETE + legal checklist signed"
+  - loop-c: "quality_check_outputs agent COMPLETE + prompt version selected"
+  - loop-d: "analyze_cohort_profile agent COMPLETE + cohort documented"
+
+agents:
+  - name: synthesize_all_outputs
+    type: data_aggregation
+    prompt: |
+      Iš keturų loop'ų output'ų nuorodų sintezuok visa informaciją į
+      vieną koherentišką duomenų struktūrą.
+
+      **INPUT SOURCES:**
+      1. Loop-A: extract_insights output
+         - themes: [{name, mentions, quotes, severity}]
+         - persona_draft: {name, age_range, seller_type, pain_points, trust_triggers}
+
+      2. Loop-B: map_to_pilot_scope output
+         - pilot_checklist: [{category, rule, applicability}]
+         - legal_sign_off: bool, approver email
+
+      3. Loop-C: quality_check_outputs output
+         - recommended_prompt_version: string
+         - metrics_summary: {accuracy, clarity, price_deviation, condition_match}
+         - quality_report: string
+
+      4. Loop-D: analyze_cohort_profile output
+         - cohort_summary: {size, avg_tx_per_month, avg_value, categories, satisfaction}
+         - seller_personas: [{persona_name, count, behavior, motivation}]
+
+      **SYNTHESIS LOGIC:**
+      1. Merge seller personas iš Loop-A + Loop-D:
+         - Iš Loop-A: ideali pardavėja — koks type?
+         - Iš Loop-D: faktinis 5-seller cohort — jie matcha Loop-A persona?
+         - Išvada: "Persona matches real cohort — low risk for pilot"
+
+      2. Cross-reference pain points:
+         - Loop-A: "payment trust" was #2 theme
+         - Loop-B: "escrow hold 7 days" is approved mitigation
+         - Išvada: "Product feature directly addresses user pain"
+
+      3. Validate workflow:
+         - Loop-C: "photo-to-listing v2 scores 7.5/10"
+         - Loop-A: "sellers valued fast listing creation"
+         - Išvada: "AI feature solves real pain, quality adequate for pilot"
+
+      4. Risk assessment:
+         - Loop-D cohort: all 5 sellers = 0 disputes, clean history
+         - Loop-B legal bounds: all risks identified + mitigations
+         - Išvada: "Pilot launch is low-risk with documented safeguards"
+
+      OUTPUT: Unified JSON + executive summary (1 page).
+
+    input:
+      loop_a_insights: "[path: /graph/loop-a-interviews/output/insights.json]"
+      loop_b_checklist: "[path: /graph/loop-b-legal/output/pilot-checklist.json]"
+      loop_c_metrics: "[path: /graph/loop-c-photo/output/quality-report.json]"
+      loop_d_cohort: "[path: /graph/loop-d-sellers/output/cohort-profile.json]"
+
+    output_schema: |
+      unified_context:
+        interview_themes: [
+          {
+            name: string
+            mentions: integer
+            severity: string
+            product_mitigation: string (from Loop-B/C)
+          }
+        ]
+
+        seller_personas:
+          ideal_from_research: {name, type, pain_points}
+          real_from_cohort: {name, type, pain_points}
+          alignment_score: float (0–1)
+          risk_assessment: string
+
+        workflow_validation:
+          photo_to_listing_ready: bool
+          quality_score: float
+          user_need_alignment: string
+
+        legal_readiness:
+          checklist_items_count: integer
+          legal_sign_off: bool
+          approver: string
+          remaining_risks: [string]
+
+        cohort_readiness:
+          seller_count: integer
+          avg_history_quality: string
+          attrition_risk: "low" | "medium"
+
+      executive_summary: string (max 1 page)
+
+    success_criteria:
+      critical: "all 4 loop outputs integrated"
+      required: "synthesis completed + 1-page summary generated"
+      nice_to_have: "synthesis + risk matrix + mitigation roadmap"
+
+    estimated_duration: 1 day
+    dependencies: "A, B, C, D COMPLETE"
+    owner: "Claude AI (synthesis) + You (validation)"
+
+  - name: create_persona
+    type: persona_generation
+    prompt: |
+      Iš Loop-A pokalbių ir Loop-D cohort profilio,
+      nubrėžk detalizuotą SELLER PERSONA.
+
+      **TEMPLATE:**
+
+      # [Persona Name] — Repeat Seller, Used Electronics
+
+      ## Demographics
+      - Age: [25–45]
+      - Location: [Urban Lithuania]
+      - Tech comfort: [Intermediate — uses Paysera, but not power user]
+      - Seller type: [Casual upgrader / Professional reseller]
+
+      ## Selling Behavior
+      - Frequency: [~5 items/month, consistent]
+      - Categories: [Phones 60%, Laptops 40%]
+      - Average item value: [150–400 EUR]
+      - Listing process (current): [Takes 15–20 min per item]
+        - Photograph device (2–3 angles)
+        - Write description manually (10 min of typing + corrections)
+        - Research comparable prices (3–5 min)
+        - Post listing
+
+      ## Pain Points (from Loop-A interviews)
+      1. **Time friction:** "Listing creation is tedious"
+      2. **Description quality:** "I struggle to describe conditions properly"
+      3. **Pricing uncertainty:** "How much should I ask?"
+      4. **Payment trust:** "Worried about chargebacks / fake buyers"
+
+      ## Motivation for Pilot
+      - Save time on listing creation (by 50%+)
+      - Higher-quality descriptions → more inquiries
+      - Faster transactions → more inventory turnover
+
+      ## Trust Triggers (what makes them trust Paysera?)
+      - Established platform (already use for buyer protection)
+      - Identity verification (know Paysera verifies users)
+      - Protected payment (can dispute if something goes wrong)
+
+      ## Technical Skills
+      - Can photograph items (owns smartphone)
+      - Comfortable with in-app workflows (no CLI / backend)
+      - Prefers mobile-first experience (checks listings on phone)
+
+      ## Objections (potential)
+      - "Will AI descriptions match my listing style?"
+      - "What if the AI price is too low / too high?"
+      - "Can I customize before posting?"
+
+      ## Success Metrics (for this persona in pilot)
+      - Participant completes >= 3 listings via platform
+      - Average listing time <= 5 min (down from 15–20)
+      - At least 1 transaction with protected payment
+      - 14-day sell-through rate >= 50% (relative to their history)
+
+      OUTPUT: Markdown persona + visual one-pager (if possible).
+
+    input:
+      interview_data: "[from Loop-A extract_insights]"
+      cohort_data: "[from Loop-D analyze_cohort_profile]"
+      cohort_actual_sellers: 5
+
+    output_schema: |
+      persona:
+        name: string
+        archetype: string
+        demographics: {age_range, location, tech_comfort}
+        selling_behavior: {frequency, categories, avg_value, current_process_time}
+        pain_points: [string]
+        motivation_for_pilot: [string]
+        trust_triggers: [string]
+        objections: [string]
+        success_metrics: [string]
+
+    success_criteria:
+      critical: "1 persona drafted"
+      required: "1 detailed persona + cohort alignment check"
+      nice_to_have: "2–3 personas (A/B variations, e.g., casual vs professional)"
+
+    estimated_duration: 1 day
+    dependencies: "synthesize_all_outputs COMPLETE"
+    owner: "Claude AI (generation) + You (validation)"
+
+  - name: generate_workflow_checklist
+    type: documentation
+    prompt: |
+      Iš Loop-C photo-to-listing workflow + Loop-B legal bounds,
+      sukurk SELLER-FACING CHECKLIST: "How to list an item on Paysera Classifieds."
+
+      **TEMPLATE:**
+
+      # Checklist: List Your Item on Paysera Classifieds
+
+      ## Step 1: Prepare Your Item
+      - [ ] Clean the device (visually inspect for damages)
+      - [ ] Gather specs: brand, model, storage, color, year
+      - [ ] Note condition: Mint / Good / Fair / Poor
+      - [ ] Check for: Cracks, dents, scratches, missing parts
+
+      ## Step 2: Take Photos
+      - [ ] Take 3–5 clear photos (natural lighting)
+      - [ ] Include: Front, back, sides (show condition)
+      - [ ] Photo tips: Avoid shadows, use plain background
+      - [ ] Optional: Include box / charger (if available)
+
+      ## Step 3: Upload & Generate Description
+      - [ ] Click "Sell item" → Select "Used phone" OR "Used laptop"
+      - [ ] Upload photos (our AI will recognize the device)
+      - [ ] Review AI-generated title + description
+      - [ ] Edit title if needed (keep under 100 characters)
+      - [ ] Edit description (optional — our AI nails it 80% of the time)
+
+      ## Step 4: Pricing
+      - [ ] Check suggested price range (AI estimates based on model + condition)
+      - [ ] Set your price (within range or customize)
+      - [ ] Tip: Check comparables on Vinted / eBay for reference
+
+      ## Step 5: Legal & Safety
+      - [ ] Confirm: Device is not stolen (Paysera will verify)
+      - [ ] Confirm: No counterfeit items
+      - [ ] Confirm: Item matches description (photo + text)
+      - [ ] Acknowledge: Paysera buyer protection + escrow (7 days)
+
+      ## Step 6: Publish
+      - [ ] Click "Publish"
+      - [ ] Share listing on Facebook / friends (optional)
+      - [ ] Monitor inquiries in-app
+
+      ## After Buyer Found
+      - [ ] Confirm buyer identity via Paysera
+      - [ ] Ship item (tracking required)
+      - [ ] Buyer confirms receipt within 7 days
+      - [ ] Payment released to you
+
+      ## FAQ
+      Q: "Can I edit after publishing?"
+      A: Yes, via "Edit listing" button.
+
+      Q: "What if description is wrong?"
+      A: Customize it before publishing. Our AI is a starting point.
+
+      Q: "What if no buyer after 14 days?"
+      A: Relist for free OR adjust price.
+
+      ---
+
+      OUTPUT: HTML / Markdown checklist + embedded screenshots (if available).
+
+    input:
+      photo_to_listing_workflow: "[from Loop-C run_photo_to_listing_ai]"
+      legal_bounds: "[from Loop-B map_to_pilot_scope — user-facing rules]"
+      prompt_version_selected: "[from Loop-C quality_check_outputs]"
+
+    output_schema: |
+      workflow_checklist:
+        title: string
+        steps: [
+          {
+            step_number: integer
+            title: string
+            instructions: [string]
+            checklist_items: [string]
+            tips: [string]
+            warnings: [string] (if applicable)
+          }
+        ]
+        faq: [
+          {
+            question: string
+            answer: string
+          }
+        ]
+
+    success_criteria:
+      critical: "checklist with 6 major steps drafted"
+      required: "detailed checklist + 5+ FAQ items"
+      nice_to_have: "checklist + screenshots + video guide"
+
+    estimated_duration: 1 day
+    dependencies: "synthesize_all_outputs COMPLETE"
+    owner: "Claude AI (generation) + You (UX validation)"
+
+  - name: draft_pilot_brief
+    type: executive_document
+    prompt: |
+      Iš synthesize_all_outputs + create_persona + generate_workflow_checklist,
+      sukurk galutinį **30-DAY PILOT BRIEF**.
+
+      **STRUKTURA:**
+
+      ---
+      # PAYSERA CLASSIFIEDS: 30-DAY PILOT BRIEF
+      ## Used Electronics Category (Phones, Laptops)
+
+      **Prepared by:** [Your name]
+      **Date:** [Today]
+      **Pilot Start:** [Target date]
+      **Pilot End:** [Target date + 30 days]
+
+      ---
+
+      ## EXECUTIVE SUMMARY (1 page)
+
+      We launch Paysera Classifieds in the used electronics category
+      with 5 pilot sellers. The opportunity: ~[X]k annual GMV in this
+      category across Paysera users. The hook: AI-powered listing
+      creation (photo → description + price) solves the #1 friction
+      point for sellers (time + description quality).
+
+      **Key metrics:**
+      - 14-day sell-through rate: target >= 50%
+      - Seller NPS: target >= 7/10
+      - AI description accuracy: current 7.5/10 (acceptable for pilot)
+
+      ---
+
+      ## I. MARKET & OPPORTUNITY
+
+      ### Background
+      [2–3 sentences on why this category, why now]
+
+      ### Seller Pain Points (from research)
+      1. Payment trust — Fear of chargebacks / fake buyers
+      2. Time friction — Manual listing takes 15–20 min
+      3. Description quality — Struggle to highlight condition
+      4. Pricing uncertainty — Don't know fair market value
+
+      ### Paysera's Advantage
+      - Existing trust (already used for buyer protection)
+      - AI-powered workflow (solves pain #2)
+      - Protected payment + escrow (solves pain #1)
+      - Price recommendations (solves pain #4)
+
+      ---
+
+      ## II. PILOT DESIGN
+
+      ### Cohort: 5 Repeat Sellers
+
+      | Seller | Freq | Avg Value | Category | History |
+      |--------|------|-----------|----------|---------|
+      | [Seller 1] | 5/m | 250 EUR | Phones (80%) | 0 disputes |
+      | [Seller 2] | ... | ... | ... | ... |
+      (etc.)
+
+      **Risk:** Low. All 5 have clean history (0 disputes, 0 chargebacks).
+
+      ### Features in Pilot
+      1. **Photo-to-Listing AI** — v2 prompt (7.5/10 accuracy)
+      2. **Protected Payment** — 7-day escrow hold
+      3. **Dispute Resolution** — Escalation to legal@paysera
+      4. **Identity Verification** — GDPR-compliant (existing Paysera flow)
+
+      ### Timeline
+      - Week 1: Onboard sellers, train on platform
+      - Week 2–4: Live selling (ad-hoc support)
+      - Week 4: Collect feedback, analyze metrics
+
+      ---
+
+      ## III. SUCCESS CRITERIA
+
+      ### Quantitative
+      - **14-day sell-through rate:** >= 50% (vs. seller's historical baseline)
+      - **Listing creation time:** <= 5 min (vs. 15–20 min manual)
+      - **AI description quality score:** >= 7/10 (human review)
+      - **Zero disputes** in pilot period
+
+      ### Qualitative
+      - **Seller feedback:** NPS >= 7/10
+      - **Confidence in payment:** 80%+ say "I trust Paysera escrow"
+      - **Adoption:** All 5 sellers complete >= 3 listings
+
+      ---
+
+      ## IV. LEGAL & COMPLIANCE
+
+      ✅ **Approved by:** [Legal approver name], [date]
+
+      **Constraints & Safeguards:**
+      1. Max transaction value: [from Loop-B] EUR per listing
+      2. Prohibited items: [list from Loop-B]
+      3. Dispute escalation: [process from Loop-B]
+      4. AML red flags: [from Loop-B]
+
+      ---
+
+      ## V. ROADMAP: DAY 30 → FULL LAUNCH
+
+      **If pilot succeeds:**
+      - Expand to auto category (same logic)
+      - Expand cohort from 5 → 50 sellers
+      - Optimize AI prompt (v2 → v3)
+      - Add buyer-side features (offers, messaging)
+
+      **If pilot has issues:**
+      - Diagnose: [specific metric failed]
+      - Iterate: [specific change]
+      - Re-run: [compress timeline or extend pilot]
+
+      ---
+
+      ## VI. APPENDICES
+
+      - A. Seller Persona (from Loop-A)
+      - B. Workflow Checklist (from Loop-C)
+      - C. Legal Checklist (from Loop-B)
+      - D. Interview Insights Summary (from Loop-A)
+      - E. AI Quality Report (from Loop-C)
+      - F. Cohort Profile (from Loop-D)
+
+      ---
+
+      OUTPUT: PDF-ready Markdown + presenter notes.
+
+    input:
+      synthesis_data: "[from synthesize_all_outputs]"
+      persona: "[from create_persona]"
+      checklist: "[from generate_workflow_checklist]"
+      loop_a_themes: "[from Loop-A extract_insights]"
+      loop_b_bounds: "[from Loop-B map_to_pilot_scope]"
+      loop_c_quality: "[from Loop-C quality_check_outputs]"
+      loop_d_cohort: "[from Loop-D analyze_cohort_profile]"
+
+    output_schema: |
+      brief:
+        title: string
+        prepared_by: string
+        date: YYYY-MM-DD
+        pilot_duration_days: 30
+
+        sections:
+          executive_summary: string (max 1 page)
+          market_opportunity: string
+          pain_points: [string]
+          pilot_design: {cohort_size, features, timeline}
+          success_criteria: {quantitative: [metric], qualitative: [metric]}
+          legal_constraints: [string]
+          launch_roadmap: string
+          appendices: [string]
+
+    success_criteria:
+      critical: "draft brief completed (all sections)"
+      required: "brief ready for internal review + approval"
+      nice_to_have: "brief formatted for board presentation"
+
+    estimated_duration: 2 days
+    dependencies: "synthesize_all_outputs + create_persona + generate_workflow_checklist COMPLETE"
+    owner: "Claude AI (generation) + You (refinement + internal review)"
+
+exit_conditions:
+  completion:
+    - metric: "synthesis_complete"
+      critical: "all 4 loop outputs integrated"
+      required: "synthesis + 1-page summary"
+
+    - metric: "persona_created"
+      critical: "1 persona drafted"
+      required: "detailed + cohort alignment"
+
+    - metric: "workflow_checklist_complete"
+      critical: "6-step checklist drafted"
+      required: "detailed checklist + FAQ"
+
+    - metric: "pilot_brief_complete"
+      critical: "draft brief with all sections"
+      required: "ready for internal review"
+
+    - metric: "internal_review"
+      critical: "reviewed by you"
+      required: "reviewed by CTO + Legal (optional for day 19)"
+
+    - metric: "executive_readiness"
+      critical: "can be presented to CEO"
+      required: "feedback incorporated, final version"
+
+  timeline:
+    deadline: "DAY 19 23:59 UTC (CEO presentation on DAY 20)"
+    warning_threshold: "DAY 17 18:00 UTC — if draft not started"
+    fail_threshold: "DAY 19 18:00 UTC — if not internally reviewed"
+
+  escalation:
+    if_behind_schedule: |
+      - DAY 16: No synthesis started → compress Loop-E to 2 days, skip some appendices
+      - DAY 18: Brief not drafted → present skeleton + raw data to CTO for feedback
+      - DAY 19: Brief not reviewed → present to CEO as "draft, internal feedback pending"
