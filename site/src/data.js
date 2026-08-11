@@ -1,8 +1,8 @@
 export const profile = {
   name: "Eimantas Tauklys",
   role: "Senior Frontend Engineer → Builder-PO",
-  tagline: "agent → loop → graph of loops → reusable skill",
   linkedin: "https://linkedin.com/in/eimantastauklys",
+  email: "eimantas.tauklys@am.lt",
 };
 
 export const aiTools = [
@@ -10,39 +10,48 @@ export const aiTools = [
     name: "Claude Code Business/Premium",
     cost: "€90/mo",
     use: "Primary tool: programming, architecture, skill creation",
+    pct: 90,
+    color: "#7c6fff",
   },
   {
     name: "ChatGPT Pro",
     cost: "€20/mo",
     use: "Multi-agent orchestration, code reviews, market analysis",
+    pct: 20,
+    color: "#10a37f",
   },
   {
-    name: "OpenCode Zen + usage-based API",
+    name: "OpenCode Zen + API",
     cost: "pay-as-you-go",
     use: "Evaluating new models, routing simpler tasks cheaper, API experiments",
+    pct: 30,
+    color: "#4fd8c4",
   },
+];
+
+export const methodologySteps = [
+  { id: "agent", label: "Agent", desc: "Spawn a capable agent with a focused prompt" },
+  { id: "loop",  label: "Loop",  desc: "Iterate until the output meets the criterion" },
+  { id: "graph", label: "Graph of Loops", desc: "Wire loops together for complex multi-step work" },
+  { id: "skill", label: "Reusable Skill", desc: "Encode the validated process so it runs correctly every time" },
 ];
 
 export const skills = [
   {
     title: "TypeScript coding standards extraction",
-    detail:
-      "Split standards from the shared skill into a standalone coding-standards.md — single source of truth. Before this, rules were scattered and the agent would ignore or contradict them.",
+    detail: "Split standards from the shared skill into a standalone coding-standards.md — single source of truth. Before this, rules were scattered and the agent would ignore or contradict them.",
   },
   {
     title: "12-point pre-submit checklist",
-    detail:
-      "Added Tailwind and styled-components guards. Goal: the agent cannot submit a change that compiles but violates project conventions.",
+    detail: "Added Tailwind and styled-components guards. Goal: the agent cannot submit a change that compiles but violates project conventions.",
   },
   {
     title: "ALIS legacy discovery guidance",
-    detail:
-      "Described how the agent must locate old forms, validations, services and data structures and compare them with the rewritten system. Result: an analyst can ask ‘how did this work in the old system’ and get an answer from real code, not memory.",
+    detail: "Described how the agent must find old forms, validations, services and data structures and compare them with the rewritten system. Result: an analyst can ask 'how did this work in the old system' and get an answer from real code, not memory.",
   },
   {
     title: "Documentation drift corrections",
-    detail:
-      "Verified the live org config against documented am and biip-deploy instructions and corrected every mismatch found.",
+    detail: "Verified the live org config against documented am and biip-deploy instructions and corrected every mismatch found.",
   },
 ];
 
@@ -63,10 +72,11 @@ export const experience = [
       label: "Architectural decision owned",
       text: "Designed a multi-level org hierarchy where access to any object or folder can be granted or denied per user, group, team, or org level — with whitelist and blacklist rules in the same scope. Also designed the UX for this logic.",
     },
+    color: "#4fd8c4",
   },
   {
     id: "usbank",
-    period: "Senior role",
+    period: "2 years",
     company: "US Bank",
     role: "Senior Frontend Engineer",
     summary: "Banking merchant system — represented the team in Agile Nexus strategic meetings",
@@ -77,14 +87,15 @@ export const experience = [
     ],
     decision: {
       label: "Three decisions that fixed the release cycle",
-      text: "1. Defined feature release-readiness criteria — separated what could ship from what couldn't, without re-negotiating every time.\n2. Introduced feature flags — incomplete work stays in the codebase without blocking the release.\n3. Restructured communication channels so each team knew its responsibility and escalation path.",
+      text: "1. Defined feature release-readiness criteria — separated what could ship from what couldn't.\n2. Introduced feature flags — incomplete work stays in the codebase without blocking the release.\n3. Restructured communication channels so each team knew its responsibility and escalation path.",
     },
+    color: "#7c6fff",
   },
   {
     id: "am",
     period: "Current",
-    company: "Aplinkos Ministerija projects",
-    role: "Claude Code skills marketplace lead",
+    company: "Aplinkos Ministerija",
+    role: "Claude Code Skills Marketplace Lead",
     summary: "Building a shared Claude Code skills marketplace for government digital projects",
     details: [
       "41 commits under personal identity.",
@@ -95,14 +106,14 @@ export const experience = [
       label: "Skill design principle",
       text: "Every validated practice becomes a reusable skill — not to save time once, but so the process runs correctly every time without re-explanation.",
     },
+    color: "#f0a050",
   },
 ];
 
 export const classifieds = {
   wedge: "Used electronics in the 'daiktai' category — phones and laptops first",
   why: "Structured attributes suit AI automation, transaction value is sufficient, and the trust problem is real and documented.",
-  hypothesis:
-    "Photo → model/condition recognition → structured listing + price range in ~1 minute. Paysera-verified identity + in-product chat + protected payment reduces exit to scam links. Protected payment is a hypothesis pending legal/compliance review.",
+  hypothesis: "Photo → model/condition recognition → structured listing + price range in ~1 minute. Paysera-verified identity + in-product chat + protected payment reduces exit to scam links. Protected payment is a hypothesis pending legal/compliance review.",
   metric: "14-day sell-through rate — % of activated listings reaching a confirmed transaction within 14 days.",
   supporting: [
     "Paysera documents fraud scenarios where buyers pay for a parcel from a listing and never receive it.",
@@ -117,11 +128,9 @@ export const classifieds = {
   ],
 };
 
-export const conditions = {
-  fullTime: true,
-  english: true,
-  startIn: "2–4 weeks",
-  contract: "MB (sole proprietorship)",
-  salary: "€4,000 fixed/month",
-  remote: "To be confirmed during conversation",
-};
+export const conditions = [
+  { label: "Availability", value: "Full-time · start in 2–4 weeks" },
+  { label: "Language",     value: "English daily" },
+  { label: "Contract",     value: "MB (sole proprietorship)" },
+  { label: "Fixed rate",   value: "€4,000 / month" },
+];

@@ -1,52 +1,42 @@
-import { conditions } from "../data";
-
-const items = [
-  { label: "Availability", value: `Full-time · start in ${conditions.startIn}` },
-  { label: "Language", value: "English daily" },
-  { label: "Contract", value: conditions.contract },
-  { label: "Fixed rate", value: conditions.salary },
-  { label: "Remote", value: conditions.remote },
-];
+import { useInView } from "../hooks";
+import { conditions, profile } from "../data";
 
 export default function Conditions() {
-  return (
-    <section id="conditions">
-      <div className="label">Practical Conditions</div>
-      <h2>Work Setup</h2>
+  const [ref, visible] = useInView();
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
-        {items.map((item) => (
-          <div key={item.label} className="card">
-            <div style={{ fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>
-              {item.label}
-            </div>
-            <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>{item.value}</div>
+  return (
+    <section id="conditions" className="pt-20 pb-4">
+      <p className="text-xs font-bold tracking-widest uppercase text-violet-500 dark:text-violet-400 mb-3">Engagement</p>
+      <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-8">Conditions</h2>
+
+      <div
+        ref={ref}
+        className={`grid grid-cols-2 sm:grid-cols-4 gap-4 transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"}`}
+      >
+        {conditions.map((c, i) => (
+          <div
+            key={i}
+            className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-center"
+          >
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">{c.label}</p>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-tight">{c.value}</p>
           </div>
         ))}
       </div>
 
-      <div style={{ marginTop: 40, paddingTop: 24, borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-        <div>
-          <p style={{ fontWeight: 600 }}>Eimantas Tauklys</p>
-          <p className="muted" style={{ fontSize: "0.85rem" }}>eimantas.tauklys@am.lt</p>
-        </div>
+      {/* Footer */}
+      <footer className="mt-20 pt-8 border-t border-slate-200 dark:border-slate-800 text-center">
+        <p className="text-sm font-semibold text-slate-900 dark:text-white">{profile.name}</p>
         <a
-          href="https://linkedin.com/in/eimantastauklys"
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            padding: "8px 18px",
-            background: "color-mix(in srgb, var(--accent) 12%, transparent)",
-            border: "1px solid color-mix(in srgb, var(--accent) 30%, transparent)",
-            borderRadius: 8,
-            color: "var(--accent)",
-            fontWeight: 600,
-            fontSize: "0.85rem",
-          }}
+          href={`mailto:${profile.email}`}
+          className="text-sm text-violet-600 dark:text-violet-400 hover:underline mt-1 inline-block"
         >
-          ↗ LinkedIn
+          {profile.email}
         </a>
-      </div>
+        <p className="text-xs text-slate-400 dark:text-slate-600 mt-4">
+          Built with React + Vite + Tailwind · {new Date().getFullYear()}
+        </p>
+      </footer>
     </section>
   );
 }

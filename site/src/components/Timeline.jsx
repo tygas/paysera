@@ -1,117 +1,87 @@
 import { useState } from "react";
+import { useInView } from "../hooks";
 import { experience } from "../data";
 
-const colors = {
-  scaletech: "var(--accent2)",
-  usbank: "var(--accent)",
-  am: "#f0a050",
-};
-
-export default function Timeline() {
-  const [open, setOpen] = useState("usbank");
+function Card({ item, index }) {
+  const [open, setOpen] = useState(false);
+  const [ref, visible] = useInView();
 
   return (
-    <section id="experience">
-      <div className="label">Experience</div>
-      <h2>Lead & PO Responsibilities</h2>
+    <div
+      ref={ref}
+      className={`relative pl-8 transition-all duration-700 delay-[${index * 100}ms] ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"}`}
+    >
+      {/* Timeline dot */}
+      <div
+        className="absolute left-0 top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-950 shadow"
+        style={{ backgroundColor: item.color }}
+      />
 
-      <div style={{ position: "relative" }}>
-        {/* vertical line */}
-        <div style={{
-          position: "absolute",
-          left: 19,
-          top: 24,
-          bottom: 0,
-          width: 2,
-          background: "var(--border)",
-          zIndex: 0,
-        }} />
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 hover:border-violet-300 dark:hover:border-violet-700 transition-colors duration-200">
+        <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: item.color }}>
+              {item.period}
+            </span>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">{item.company}</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{item.role}</p>
+          </div>
+        </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {experience.map((exp) => {
-            const color = colors[exp.id];
-            const isOpen = open === exp.id;
-            return (
-              <div key={exp.id} style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
-                {/* dot */}
-                <div style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: "50%",
-                  background: `color-mix(in srgb, ${color} 15%, var(--surface))`,
-                  border: `2px solid ${isOpen ? color : "var(--border)"}`,
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  zIndex: 1,
-                  transition: "border-color 0.2s",
-                  cursor: "pointer",
-                }} onClick={() => setOpen(isOpen ? null : exp.id)}>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: isOpen ? color : "var(--muted)", transition: "background 0.2s" }} />
-                </div>
+        <p className="text-sm text-slate-600 dark:text-slate-300 mb-3 italic">{item.summary}</p>
 
-                {/* content */}
-                <div style={{ flex: 1, paddingBottom: 8 }}>
-                  <div
-                    className="card"
-                    style={{
-                      cursor: "pointer",
-                      borderColor: isOpen ? color : "var(--border)",
-                      transition: "border-color 0.2s",
-                    }}
-                    onClick={() => setOpen(isOpen ? null : exp.id)}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-                      <div>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4, flexWrap: "wrap" }}>
-                          <span style={{
-                            fontSize: "0.7rem",
-                            fontWeight: 700,
-                            padding: "2px 8px",
-                            borderRadius: 4,
-                            background: `color-mix(in srgb, ${color} 15%, transparent)`,
-                            color,
-                            border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`,
-                          }}>{exp.period}</span>
-                          <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>{exp.company}</span>
-                        </div>
-                        <h3 style={{ marginBottom: 4 }}>{exp.role}</h3>
-                        <p style={{ fontSize: "0.85rem", color: "var(--muted)" }}>{exp.summary}</p>
-                      </div>
-                      <span style={{ color: "var(--muted)", fontSize: "0.8rem", flexShrink: 0 }}>
-                        {isOpen ? "▲" : "▼"}
-                      </span>
-                    </div>
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1"
+        >
+          {open ? "Less" : "Details"}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+            className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
 
-                    {isOpen && (
-                      <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
-                        <ul style={{ marginBottom: 16 }}>
-                          {exp.details.map((d, i) => (
-                            <li key={i} style={{ fontSize: "0.87rem" }}>{d}</li>
-                          ))}
-                        </ul>
+        <div className={`overflow-hidden transition-all duration-300 ${open ? "max-h-96 mt-3" : "max-h-0"}`}>
+          <ul className="space-y-1.5 mb-4">
+            {item.details.map((d, i) => (
+              <li key={i} className="flex gap-2 text-sm text-slate-500 dark:text-slate-400">
+                <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                {d}
+              </li>
+            ))}
+          </ul>
 
-                        <div style={{
-                          background: `color-mix(in srgb, ${color} 8%, var(--surface2))`,
-                          border: `1px solid color-mix(in srgb, ${color} 25%, transparent)`,
-                          borderRadius: 8,
-                          padding: "14px 16px",
-                        }}>
-                          <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color, marginBottom: 8 }}>
-                            {exp.decision.label}
-                          </div>
-                          <p style={{ fontSize: "0.86rem", color: "var(--text)", whiteSpace: "pre-line" }}>
-                            {exp.decision.text}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          <div
+            className="rounded-xl p-4 border"
+            style={{ borderColor: item.color + "40", backgroundColor: item.color + "10" }}
+          >
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: item.color }}>
+              {item.decision.label}
+            </p>
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+              {item.decision.text}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function Timeline() {
+  return (
+    <section id="experience" className="pt-20">
+      <p className="text-xs font-bold tracking-widest uppercase text-violet-500 dark:text-violet-400 mb-3">Career</p>
+      <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-8">Experience</h2>
+
+      <div className="relative">
+        {/* Vertical line */}
+        <div className="absolute left-[6px] top-2 bottom-2 w-px bg-slate-200 dark:bg-slate-800" />
+
+        <div className="space-y-5">
+          {experience.map((item, i) => (
+            <Card key={item.id} item={item} index={i} />
+          ))}
         </div>
       </div>
     </section>
