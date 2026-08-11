@@ -1,0 +1,342 @@
+---
+loop: D
+name: Repeat Seller Pattern Analysis & Recruitment
+goal: Identifikuoti 5 patikimus repeat pardavėjus pirmaai cohortai
+category: User Research & Recruitment
+duration_days: 14
+parallel_with: [A, B, C]
+
+agents:
+  - name: query_paysera_transactions
+    type: database_query + data_extraction
+    prompt: |
+      Iš Paysera transactions duomenų bazės:
+
+      1. **FILTERS:**
+         - category: "electronics" (phones, laptops, tablets)
+         - time_window: last 90 days
+         - repeat_transactions: >= 2 (sold >= 2 items in this period)
+         - transaction_status: "completed" (not cancelled, disputed)
+
+      2. **OUTPUT COLUMNS:**
+         - seller_id
+         - seller_name (or anonymized ID)
+         - transaction_count (last 90d)
+         - avg_transaction_value_EUR
+         - total_value_EUR
+         - first_transaction_date
+         - last_transaction_date
+         - buyer_diversity (how many unique buyers?)
+         - dispute_count (0 = ideal)
+         - chargeback_count
+         - buyer_satisfaction (if available: ratings)
+
+      3. **INCLUSION CRITERIA (must have all):**
+         - >= 2 completed transactions in last 90 days
+         - avg_transaction_value >= 100 EUR (serious sellers, not penny pushers)
+         - dispute_count = 0 (clean history)
+         - chargeback_count = 0
+         - buyer_diversity >= 2 (not selling to same person repeatedly)
+
+      4. **SAFETY CHECKS:**
+         - Filter out sellers with AML flags (if flagged)
+         - Filter out sellers with velocity_red_flags (too many sales per day)
+         - Filter out sellers with geographic anomalies (if applicable)
+
+      OUTPUT: CSV with filtered seller list (n >= 50 candidates, rank by transaction_count DESC).
+
+    input:
+      database: "paysera_transactions"
+      filters:
+        category: "electronics"
+        time_window_days: 90
+        min_repeat_transactions: 2
+        transaction_status: "completed"
+
+      inclusion_criteria:
+        min_transactions: 2
+        min_avg_value_EUR: 100
+        max_disputes: 0
+        max_chargebacks: 0
+        min_buyer_diversity: 2
+
+      exclusion_criteria:
+        aml_flag: true
+        velocity_red_flag: true
+
+    output_schema: |
+      - seller_id: string (hashed or anonymized)
+      - seller_name: string
+      - transaction_count: integer
+      - avg_transaction_value_EUR: float
+      - total_value_EUR: float
+      - first_transaction_date: YYYY-MM-DD
+      - last_transaction_date: YYYY-MM-DD
+      - buyer_diversity_count: integer
+      - dispute_count: integer
+      - chargeback_count: integer
+      - satisfaction_score: float (if available)
+      - eligible_for_pilot: bool (all criteria met?)
+      - rank: integer (sorted by transaction_count DESC)
+
+    success_criteria:
+      critical: ">= 20 eligible sellers found"
+      required: ">= 50 eligible sellers found"
+      nice_to_have: ">= 100 eligible sellers + sub-segment analysis"
+
+    estimated_duration: 3 days (data extraction + validation)
+    dependencies: none
+    owner: "You (or DB admin) + data team"
+
+  - name: enrich_seller_profiles
+    type: data_enrichment
+    prompt: |
+      Iš top 20 sellers (filtered by query_paysera_transactions),
+      susatinkęs šią informaciją:
+
+      1. **CONTACT INFORMATION:**
+         - Current email (from Paysera profile)
+         - Phone number (if shared)
+         - Preferred communication channel (email, in-app message, SMS)
+         - Timezone (inferred from IP or profile)
+         - Preferred language (LT, EN, RU)
+
+      2. **PROFILE ACTIVITY:**
+         - Profile creation date
+         - Last login date
+         - Profile completeness (0–100%)
+         - Public bio / description (if exists)
+         - Photo / avatar presence
+
+      3. **HISTORICAL BEHAVIOR:**
+         - Average response time to buyer messages
+         - Typical shipping time from sale to delivery
+         - Common item categories (what electronics they sell most?)
+         - Price range preference (budget items vs premium?)
+
+      4. **TRUST SIGNALS:**
+         - Verified identity (ID, phone verified?)
+         - Reviews/ratings from buyers (if available)
+         - Repeat buyer count (how many came back?)
+         - Public recommendations / endorsements
+
+      5. **PRODUCT HYPOTHESIS FIT:**
+         - Likely to participate in pilot? (based on profile activity)
+         - Likely to benefit from photo-to-listing AI? (currently manual?)
+         - Pain point alignment (does their history show friction points?)
+
+      OUTPUT: Enriched seller profiles JSON + ranking for outreach.
+
+    input:
+      seller_list: "[from query_paysera_transactions top 20]"
+      enrichment_sources:
+        - paysera_profiles
+        - transaction_history (timing patterns)
+        - communication_logs (if available)
+        - identity_verification_status
+
+    output_schema: |
+      - seller_id: string
+      - contact_email: string
+      - contact_phone: string (optional)
+      - preferred_channel: "email" | "in_app" | "sms"
+      - timezone: string
+      - preferred_language: "lt" | "en" | "ru"
+      - profile_completeness: float (0–1)
+      - avg_response_time_hours: integer
+      - avg_shipping_time_days: integer
+      - common_category: string
+      - avg_price_range_EUR: string (e.g., "150–500")
+      - identity_verified: bool
+      - buyer_satisfaction_avg: float (0–5)
+      - repeat_buyer_count: integer
+      - pilot_fit_score: float (0–10, composite metric)
+      - outreach_priority: integer (1 = highest, 20 = lowest)
+
+    success_criteria:
+      critical: ">= 15 sellers enriched"
+      required: ">= 20 sellers enriched"
+      nice_to_have: ">= 20 sellers + enrichment completeness >= 90%"
+
+    estimated_duration: 3 days (API calls + profile analysis)
+    dependencies: "query_paysera_transactions COMPLETE"
+    owner: "You (data aggregation) + Paysera data API"
+
+  - name: recruit_pilot_cohort
+    type: outreach + consent_management
+    prompt: |
+      Iš enriched_seller_profiles, top 20 candidates (ranked by pilot_fit_score):
+
+      1. **OUTREACH SEQUENCE:**
+         - DAY 1: Send invitation via preferred_channel (email or in-app)
+         - DAY 3: If no response, send reminder
+         - DAY 5: If still no response, try alternate channel
+         - DAY 7: Final touchpoint (if interested, schedule call)
+
+      2. **INVITATION MESSAGE (customize per channel):**
+
+         EMAIL TEMPLATE:
+         ---
+         Subject: Try our new Paysera seller tools (test group)
+
+         Sveiki [seller_name],
+
+         Matėme, kad parduodate elektronikos daiktus per Paysera.
+         Kviečiame jus į Paysera Classifieds beta — naujos pardavimo
+         platformos, kurioje AI padeda greitai sukurti aprašymus.
+
+         Jūsų testinė grupė: pirmos 2 savaitės nemokamai.
+         Dalyvavimas: viena konsultacija (30 min) ir pardavimas, kaip įprastai.
+
+         Laisvieji slotvai:
+         [Calendar link OR "Nuo rugsėjo 1"]
+
+         Bonus: 25 EUR cashback už pirmą pardavimą per platformą.
+
+         Dėkui,
+         Paysera Team
+
+         ---
+
+         IN-APP MESSAGE (shorter):
+         "Try Paysera Classifieds — AI-powered seller tools.
+         First 2 weeks free. [Schedule call or Learn more]"
+
+      3. **CONSENT & DATA:**
+         - Confirm they agree to participate
+         - Get consent for: in-app analytics, user research interview, platform testing
+         - Confirm contact info (email + phone for call scheduling)
+
+      4. **CONFIRMATION:**
+         - Send confirmation email with platform onboarding link
+         - Schedule kickoff call (optional, but recommended)
+
+      OUTPUT: Recruitment log + cohort confirmation list.
+
+    input:
+      candidate_list: "[from enrich_seller_profiles, top 20]"
+      outreach_channels: "[seller_preferred_channel]"
+      recruitment_target: 5
+      recruitment_backup: 3
+      incentive: "25 EUR cashback"
+
+    output_schema: |
+      - seller_id: string
+      - contact_channel_1: string
+      - contact_datetime_1: YYYY-MM-DD HH:MM
+      - response_status: "not_contacted" | "invited" | "reminded" | "confirmed" | "declined"
+      - response_datetime: YYYY-MM-DD HH:MM (if applicable)
+      - consent_obtained: bool
+      - consent_date: YYYY-MM-DD
+      - contact_email: string (final, confirmed)
+      - contact_phone: string (if shared)
+      - onboarding_link_sent: bool
+      - kickoff_call_scheduled: bool
+      - cohort_status: "ready" | "pending_response" | "declined"
+
+    success_criteria:
+      critical: ">= 4 confirmed cohort members"
+      required: ">= 5 confirmed cohort members + consent"
+      nice_to_have: ">= 7 confirmed (includes backup)"
+
+    estimated_duration: 7 days (DAY 3–10: outreach sequence; DAY 11–14: confirmations)
+    dependencies: "enrich_seller_profiles COMPLETE"
+    owner: "You (messaging) + Paysera (in-app notifications)"
+
+  - name: analyze_cohort_profile
+    type: data_synthesis
+    prompt: |
+      Iš 5 confirmed pilots (recruitment COMPLETE):
+
+      1. **COHORT DEMOGRAPHICS:**
+         - Age range (if available from profile)
+         - Location (regional distribution)
+         - Device categories they sell (phones, laptops, both?)
+         - Price range they typically handle
+         - Seller maturity (new vs veteran)
+
+      2. **BUSINESS MODEL:**
+         - Volume: how many items per month?
+         - Frequency: consistent weekly OR sporadic?
+         - Profit motive: professional reseller OR hobby?
+
+      3. **TECH SAVVINESS:**
+         - Profile completeness (proxy for care)
+         - Photo quality in past listings (manual or AI-friendly?)
+         - Response speed (engaged users)
+
+      4. **PAIN POINT ALIGNMENT:**
+         - Do they mention friction in description?
+         - Time spent per listing (if can infer)?
+         - Likely to appreciate photo-to-listing automation?
+
+      5. **RISK PROFILE:**
+         - Clean history (0 disputes, 0 chargebacks)
+         - Buyer satisfaction high?
+         - Any suspicious patterns?
+
+      OUTPUT: Cohort brief + personas for pilot UX design.
+
+    input:
+      confirmed_cohort: "[5 sellers from recruit_pilot_cohort COMPLETE]"
+      enrichment_data: "[from enrich_seller_profiles]"
+
+    output_schema: |
+      cohort_summary:
+        size: 5
+        avg_transactions_per_month: float
+        avg_item_value_EUR: float
+        primary_categories: [string]
+        geographic_spread: [string]
+        avg_satisfaction_score: float
+
+      seller_personas: [
+        {
+          persona_name: string (e.g., "Casual Upgrader")
+          count: integer
+          typical_behavior: string
+          likely_friction_points: [string]
+          motivation_for_pilot: string
+        }
+      ]
+
+      cohort_risk_assessment: "low" | "medium" (should be "low" for pilot)
+
+    success_criteria:
+      critical: "5 sellers cohort profile documented"
+      required: "cohort summary + 2–3 seller personas"
+      nice_to_have: "personas with quotes from recruitment conversations"
+
+    estimated_duration: 2 days (DAY 12–14)
+    dependencies: "recruit_pilot_cohort COMPLETE"
+    owner: "You + Claude AI (pattern synthesis)"
+
+exit_conditions:
+  completion:
+    - metric: "eligible_sellers_found"
+      critical: ">= 20"
+      required: ">= 50"
+
+    - metric: "seller_profiles_enriched"
+      critical: ">= 15"
+      required: ">= 20"
+
+    - metric: "cohort_members_confirmed"
+      critical: ">= 4 with consent"
+      required: ">= 5 with consent + contact info"
+      nice_to_have: ">= 7 (includes backup)"
+
+    - metric: "cohort_profile_documented"
+      critical: "basic summary (size, categories)"
+      required: "detailed summary + personas"
+
+  timeline:
+    deadline: "DAY 14 23:59 UTC"
+    warning_threshold: "DAY 10 18:00 UTC — if < 3 confirmed"
+    fail_threshold: "DAY 15 09:00 UTC — if < 4 confirmed"
+
+  escalation:
+    if_behind_schedule: |
+      - DAY 8: < 20 eligible sellers found → broaden filters (lower min_value_EUR OR include sellers with 1 transaction)
+      - DAY 11: < 3 confirmed → increase incentive (50 EUR instead of 25) OR personal outreach call
+      - DAY 13: < 4 confirmed → extend recruitment to DAY 17, proceed with 4 if necessary
