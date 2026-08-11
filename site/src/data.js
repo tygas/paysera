@@ -111,20 +111,50 @@ export const experience = [
 ];
 
 export const classifieds = {
-  wedge: "Used electronics in the 'daiktai' category — phones and laptops first",
-  why: "Structured attributes suit AI automation, transaction value is sufficient, and the trust problem is real and documented.",
-  hypothesis: "Photo → model/condition recognition → structured listing + price range in ~1 minute. Paysera-verified identity + in-product chat + protected payment reduces exit to scam links. Protected payment is a hypothesis pending legal/compliance review.",
+  graphUrl: "https://github.com/tygas/paysera/tree/master/graph",
+
+  wedge: "Used electronics — phones & laptops first",
+  wedgeReason: "Structured attributes (model, condition, storage) are ideal for AI. Transaction value is high enough to justify trust infrastructure. Fraud is documented and hurts buyers today.",
+
+  problem: {
+    headline: "Classified ads in Lithuania have a trust gap",
+    points: [
+      "Paysera's own fraud docs describe buyers paying for parcels from listings and never receiving them.",
+      "Lithuanian police regularly warn about fake delivery-link scams sent from classified ad chats.",
+      "Sellers and buyers exit to WhatsApp or external payment links — outside any platform's control.",
+    ],
+  },
+
+  offer: {
+    headline: "What I'd build: AI-first listing + Paysera trust layer",
+    steps: [
+      {
+        label: "Photo → listing in ~1 min",
+        desc: "Seller uploads photos. AI recognises model, condition and storage. Structured listing + market price range auto-generated. Seller reviews and publishes.",
+      },
+      {
+        label: "Paysera-verified identity",
+        desc: "Seller identity is already verified by Paysera. Buyers see a trust badge — no anonymous listings.",
+      },
+      {
+        label: "In-product chat",
+        desc: "All negotiation stays inside the platform. Eliminates the exit to external links where scams happen.",
+      },
+      {
+        label: "Protected payment (hypothesis)",
+        desc: "Funds held until delivery confirmed. Hypothesis — depends on legal/compliance scope. Not an existing feature.",
+      },
+    ],
+  },
+
   metric: "14-day sell-through rate — % of activated listings reaching a confirmed transaction within 14 days.",
-  supporting: [
-    "Paysera documents fraud scenarios where buyers pay for a parcel from a listing and never receive it.",
-    "Lithuanian police regularly warns about fake delivery-link scams from classified listings.",
-  ],
+
   thirtyDays: [
-    "Interview 10–15 recent sellers/buyers — map the listing, negotiation, payment, and delivery journey.",
-    "Define identity, funds-holding, dispute, and prohibited-goods limits with legal/compliance.",
-    "Prototype photo-to-listing and verified chat/payment flow.",
+    "Interview 10–15 recent sellers/buyers — map the full listing → negotiation → payment → delivery journey.",
+    "Define identity, funds-holding, dispute and prohibited-goods limits with legal/compliance.",
+    "Prototype the photo-to-listing flow and in-product verified chat/payment screen.",
     "Recruit a narrow seed cohort from Paysera channels or internal network.",
-    "Run a concierge pilot, instrument the full funnel, decide at day 30: deepen, change wedge, or stop.",
+    "Run a concierge pilot, instrument the funnel, decide at day 30: deepen this wedge, change it, or stop.",
   ],
 };
 
