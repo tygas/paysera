@@ -4,7 +4,7 @@ Kostai,
 
 ačiū už konkretų laišką. Builder-PO modelis man natūralus: stipriausiose rolėse
 neapsiribojau implementacija — apibrėžiau reikalavimus, priėmiau architektūrinius
-bei proceso sprendimus ir koordinavau kelių komandų darbą. Žemiau aprašau, kas
+bei proceso sprendimus ir release procesą. Žemiau aprašau, kas
 tiksliai buvo mano sprendimai, o ne ką darė komanda.
 
 ## AI planai ir darbo metodas

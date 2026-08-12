@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useInView } from "../hooks";
-import { classifieds } from "../data";
+import {useState} from "react";
+import {useInView} from "../hooks";
+import {classifieds} from "../data";
 
 const TABS = [
   { id: "problem",  label: "Problem" },
@@ -11,23 +11,23 @@ const TABS = [
 
 const icons = {
   photo: (
-    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
       <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
       <polyline points="21,15 16,10 5,21"/>
     </svg>
   ),
   shield: (
-    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
     </svg>
   ),
   chat: (
-    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
     </svg>
   ),
   lock: (
-    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
       <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
     </svg>
   ),
@@ -52,23 +52,36 @@ export default function Classifieds() {
       </div>
       <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">{classifieds.wedgeReason}</p>
 
-      {/* Graph loop link */}
-      <a
-        href={classifieds.graphUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-xl border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
-      >
-        <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-        </svg>
-        AI Graph of Loops — implementation
-        <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-          <polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/>
-        </svg>
-      </a>
+      {/* Graph loop link - implementation button */}
+      <div className="mb-8">
+        <a
+          href={classifieds.graphUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-3 mb-4 px-6 py-4 rounded-2xl border-2 border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 transition-all hover:scale-105"
+        >
+          <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="shrink-0">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-red-700 dark:text-red-300">AI Graph of Loops — Implementation</p>
+            <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">See the classified ads system architecture & wired loops</p>
+          </div>
+          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="shrink-0">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+        </a>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-4 text-xs">
+          <p className="font-semibold text-slate-900 dark:text-white mb-2">📋 Check these markdown files to understand the implementation:</p>
+          <ul className="space-y-1.5 text-slate-600 dark:text-slate-400">
+            <li>• <code className="bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded text-[11px]">graph/README.md</code> — System architecture overview</li>
+            <li>• <code className="bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded text-[11px]">graph/LOOPS.md</code> — Classified tasks & graph structure</li>
+            <li>• <code className="bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded text-[11px]">graph/FLOWS.md</code> — Buyer/seller flow diagrams</li>
+          </ul>
+        </div>
+      </div>
 
       {/* Tab bar */}
       <div className="flex gap-1 mb-5 bg-slate-100 dark:bg-slate-900 rounded-xl p-1 border border-slate-200 dark:border-slate-800">
@@ -123,8 +136,8 @@ export default function Classifieds() {
             </p>
             <div className="space-y-4">
               {classifieds.offer.steps.map((s, i) => (
-                <div key={i} className="flex gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300 flex items-center justify-center shrink-0">
+                <div key={i} className="flex gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300 flex items-center justify-center shrink-0">
                     {offerIcons[i]}
                   </div>
                   <div>
