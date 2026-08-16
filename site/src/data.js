@@ -5,26 +5,29 @@ export const profile = {
   email: "eimantas.tauklys@am.lt",
 };
 
+// An earlier version of this list showed each tool with a percentage bar —
+// 90%, 20%, 30%. Those were the monthly euro prices redrawn as percentages of
+// nothing. A number rendered as a chart implies it was measured; these were not.
+// Removed, along with the prices themselves, which were from memory and whose
+// plan names were wrong. What is left is what is actually known: the plan and
+// when it started. See AUDIT-graph-2026-08-16.md.
 export const aiTools = [
   {
-    name: "Claude Code Business/Premium",
-    cost: "€90/mo",
-    use: "Primary tool: programming, architecture, skill creation",
-    pct: 90,
-    color: "#dc2626",
-  },
-  {
-    name: "ChatGPT Pro",
-    cost: "€20/mo",
-    use: "Multi-agent orchestration, code reviews, market analysis",
-    pct: 20,
+    name: "ChatGPT Pro/Max",
+    since: "since early 2025",
+    use: "Multi-agent orchestration, code reviews, market analysis (with OMX)",
     color: "#eab308",
   },
   {
-    name: "OpenCode Zen + API",
-    cost: "pay-as-you-go",
+    name: "Claude Team",
+    since: "since summer 2026",
+    use: "Primary tool: programming, architecture, skill creation",
+    color: "#dc2626",
+  },
+  {
+    name: "OpenCode Zen + usage-based API",
+    since: "since summer 2026",
     use: "Evaluating new models, routing simpler tasks cheaper, API experiments",
-    pct: 30,
     color: "#d97706",
   },
 ];
@@ -149,17 +152,24 @@ export const classifieds = {
 
   metric: "14-day sell-through rate — % of activated listings reaching a confirmed transaction within 14 days.",
 
+  // Order matters here, and it is deliberate. An earlier version of this list
+  // put interviews first and legal second. In a licensed institution that is
+  // backwards: it starts collecting people's data before establishing the basis
+  // for holding it. The loop graph now gates all personal-data work behind a
+  // written legal-basis decision on day 6. See AUDIT-graph-2026-08-16.md.
   thirtyDays: [
-    "Interview 10–15 recent sellers/buyers — map the full listing → negotiation → payment → delivery journey.",
-    "Define identity, funds-holding, dispute and prohibited-goods limits with legal/compliance.",
-    "Prototype the photo-to-listing flow and in-product verified chat/payment screen.",
-    "Recruit a narrow seed cohort from Paysera channels or internal network.",
-    "Run a concierge pilot, instrument the funnel, decide at day 30: deepen this wedge, change it, or stop.",
+    "Days 1–6 — establish the lawful basis with legal/compliance first: what data may be used, for which purpose, retained how long. Nothing touching a person starts before this is decided in writing.",
+    "Days 1–15 — prototype and measure the photo-to-listing flow. No personal data involved, so it runs from day one.",
+    "Days 7–20 — interview 10–15 recent sellers/buyers; map listing → negotiation → payment → delivery.",
+    "Days 7–19 — recruit a narrow seed cohort from Paysera channels, consent first.",
+    "Days 21–27 — synthesise into one evidence-tagged brief, mandatory CTO + legal review, then a go/no-go decision.",
+    "Then run the concierge pilot for 30 days, instrument the funnel, and decide: deepen this wedge, change it, or stop.",
   ],
 };
 
 export const conditions = [
   { label: "Availability", value: "Full-time · start in 2–4 weeks" },
+  { label: "Location",     value: "Hybrid — 3–4 days/week from Kaunas, Vilnius as needed" },
   { label: "Language",     value: "English daily" },
   { label: "Contract",     value: "MB (sole proprietorship)" },
   { label: "Fixed rate",   value: "€4,000 / month" },

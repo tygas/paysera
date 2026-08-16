@@ -1,6 +1,31 @@
 # Paysera Tech builder-PO application — progress checkpoint
 
-Updated: 2026-08-07
+Updated: 2026-08-16
+
+## Checkpoint 2026-08-16 — audit of our own output, and three gaps closed
+
+Paysera's follow-up (`Part2.md`) said the `graph/` directory contradicted the
+discipline this file describes, and asked us to find the defects ourselves.
+
+We did. Five categories, 23 findings, all fixed —
+[`AUDIT-graph-2026-08-16.md`](AUDIT-graph-2026-08-16.md). The most serious was a
+sequencing error: production customer-data queries and marketing outreach were
+scheduled 11 days ahead of the legal sign-off authorising them, while
+`INDEX.md` stated "Dependencies: None between loops".
+
+**This file's own rule was the one that was broken.** The line below —
+"Do not invent dates, metrics, team sizes, tools, ownership, or business
+outcomes" — was written here and then violated in the same week's output,
+because it lived in a document nobody re-read at publication time. It is now
+enforced mechanically: `tools/validate-graph.mjs` (check C4), a blocking
+`PreToolUse` hook, and `.claude/skills/pre-publish-audit/SKILL.md`.
+
+**Three previously-open facts are now confirmed** (supplied by the candidate
+2026-08-16; see §"Confirmed 2026-08-16" below): AI-plan start dates, US Bank
+period and team size, and remote-work preference.
+
+---
+
 
 ## Objective
 
@@ -19,9 +44,53 @@ tools, ownership, or business outcomes.
 - Interest and current practice: prompt engineering, loops, and graphs of
   loops; continuously creating and improving reusable agent skills.
 
+## Confirmed 2026-08-16
+
+Supplied directly by the candidate on 2026-08-16, closing the three gaps named
+in `Part2.md`.
+
+### AI plans — start dates
+
+| Tool | In use since | Purpose |
+|---|---|---|
+| ChatGPT Pro/Max | early 2025 | Multi-agent orchestration, code review, market analysis (with OMX) |
+| Claude Team | summer 2026 | Primary tool: development, architecture, skill authoring |
+| OpenCode Zen + usage-based API | summer 2026 | Evaluating new models, routing simple tasks to cheaper ones, small API experiments |
+
+Roughly 1.5 years of paid AI tooling overall; Claude Team Pro for about three months.
+
+**Correction to the sent letter.** `Paysera-atsakymas.md` stated "Claude Code
+Business/Premium — 90 Eur/mėn." and "ChatGPT Pro — 20 Eur/mėn." The plan names
+were imprecise and the prices were from memory.
+
+### US Bank — period and team
+
+- **Senior Front End Developer, U.S. Bank, full-time, 2022-12 – 2024-04
+  (1 year 5 months).**
+- Own team: **5 front-end engineers, 4 QA, 1 Product Owner.**
+- Delivery structure: **two FE teams and two BE teams in Lithuania plus one
+  team in the US** — five teams whose code went into the same release.
+- Represented own team in Agile Nexus meetings.
+
+This resolves the previously-open question of whether "five teams" meant five
+repositories: it did not. It meant five teams whose work converged on one
+release — which is precisely why one unfinished piece could block the whole
+release, and why release-readiness criteria plus feature flags addressed it.
+
+### Remote-work preference
+
+- **Hybrid: 3–4 days per week from an office in Kaunas, travelling to Vilnius
+  when needed.**
+- Supersedes the sent letter's "Nuotolinio darbo detalę galime suderinti pokalbio
+  metu", which deferred the question rather than answering it.
+
+---
+
 ## US Bank — confirmed facts
 
-- Role: Senior Frontend Engineer.
+- Role: Senior Front End Developer (title as held: "Senior Front End Developer").
+- Period: 2022-12 – 2024-04, full-time. *(Confirmed 2026-08-16.)*
+- Team: 5 FE engineers, 4 QA, 1 PO. *(Confirmed 2026-08-16.)*
 - Product context: a banking merchant system.
 - Responsibility included building the merchant system.
 - Represented the team in Agile Nexus meetings concerning strategic and
@@ -33,7 +102,9 @@ tools, ownership, or business outcomes.
 
 Initial situation:
 
-- A release combined work from five teams/repositories.
+- A release combined work from five teams: two FE and two BE teams in Lithuania
+  plus one team in the US. *(Confirmed 2026-08-16 — five teams, not five
+  repositories. Earlier wording left this ambiguous.)*
 - Releases were frequently postponed and constrained by code freezes.
 
 Changes made:
@@ -54,12 +125,17 @@ Personal contribution confirmed by the candidate:
 3. Five-team release coordination.
 4. Communication and escalation organization.
 
-Not yet confirmed:
+Resolved 2026-08-16:
 
-- Employment dates and duration.
+- ~~Employment dates and duration.~~ → 2022-12 – 2024-04, 1 year 5 months.
+- ~~Team size.~~ → 5 FE, 4 QA, 1 PO.
+- ~~Five repositories or five contributing codebases.~~ → Five *teams*
+  (2 FE + 2 BE in LT, 1 in the US) converging on one release. Do not write
+  "five repositories".
+
+Still not confirmed — do not write these:
+
 - Exact frontend stack and CI/CD tooling.
-- Whether the five teams used five separate repositories or five contributing
-  codebases; the current wording should not overstate this distinction.
 - Quantitative before/after metrics: release frequency, delay rate, lead time,
   manual steps, rollback rate, or escaped defects.
 - Exact Nexus meeting cadence and examples of strategic/architectural decisions.
@@ -111,27 +187,28 @@ Not yet confirmed:
 Enough evidence exists to prepare the application. Remaining unknowns must be
 handled explicitly rather than blocking indefinitely:
 
-- AI-plan start dates were requested more than once but not supplied.
-- ChatGPT Pro and OpenCode/API exact monthly spend was not supplied.
-- Remote-work preference was not explicitly restated, although the role itself
-  permits remote work.
-- Exact employment dates and team sizes for US Bank/Scale Tech remain unknown.
+- ~~AI-plan start dates were requested more than once but not supplied.~~
+  → Supplied 2026-08-16. See "Confirmed 2026-08-16".
+- Exact monthly spend still not supplied. **Omit prices rather than estimate
+  them** — the sent letter's €90 / €20 figures were from memory and the plan
+  names were wrong.
+- ~~Remote-work preference was not explicitly restated.~~ → Hybrid, 3–4 days per
+  week from Kaunas, travelling to Vilnius as needed.
+- ~~Exact employment dates and team size for US Bank.~~ → Supplied 2026-08-16.
+- Scale Tech employment dates, formal role and team size remain unknown.
 - Quantitative delivery/business outcomes remain unknown.
 
 ## Remaining application questions
 
 The following facts are still required before drafting the final answer:
 
-1. AI subscriptions and tools: confirmed tools are Claude Code
-   Business/Premium (€90 stated by candidate), ChatGPT Pro, and OpenCode Zen
-   plus usage-based API access for trying new models or routing simple tasks to
-   cheaper models. Confirmed usage: Claude Code for coding and architecture;
-   GPT with OMX for code reviews and market analysis; OpenCode for evaluating
-   new models and building API-based experiments, including horoscope apps.
-   Still needed: exact billing period/currency for ChatGPT/OpenCode and start
-   dates. Do not imply that other popular
-   engineering tools are personally used; list them separately only as
-   ecosystem awareness if useful and current evidence is verified.
+1. ~~AI subscriptions and tools.~~ **Closed 2026-08-16.** Tools and start dates
+   are in "Confirmed 2026-08-16": ChatGPT Pro/Max since early 2025, Claude Team
+   since summer 2026, OpenCode Zen + usage-based API since summer 2026. Usage:
+   Claude for development and architecture; GPT with OMX for code review and
+   market analysis; OpenCode for evaluating models and small API experiments.
+   Still open: exact billing amounts — omit rather than estimate. Do not imply
+   that other popular engineering tools are personally used.
 2. AI-built skills/projects: strongest selected example is the work SRIS
    project. It includes reusable clean-code skills, deployment skills, and a
    skill that answers business analysts' questions about legacy repository
@@ -210,17 +287,30 @@ Inspected local repository:
 5. Work conditions: full-time confirmed; daily English confirmed; can start in
    2–4 weeks; MB contracting is acceptable; expected fixed compensation is
    EUR 4,000 per month. Because MB was named, do not call this `gross salary`
-   unless an employment-contract alternative is later confirmed. Remote-work
-   preference was asked but not explicitly answered.
+   unless an employment-contract alternative is later confirmed. ~~Remote-work
+   preference was asked but not explicitly answered.~~ → **Closed 2026-08-16:**
+   hybrid, 3–4 days per week from Kaunas, travelling to Vilnius as needed.
+
+### Note on the ordering in item 4
+
+The "First 30 days" list above runs (1) interviews → (2) map legal/compliance
+constraints. That ordering is the seed of the sequencing defect found in
+`graph/` on 2026-08-16: it puts talking to people ahead of establishing the
+basis for holding their data.
+
+For a licensed institution the correct order is the reverse. The corrected loop
+graph closes a legal-basis gate on P6 and starts all personal-data work on P7.
+**If this thesis is restated anywhere, restate it in that order.**
 
 ## Resume point
 
-Continue with this exact question:
+The AI-plan question is closed (see "Confirmed 2026-08-16"). Open items, in
+priority order:
 
-> List every AI plan/tool you currently pay for or actively use. For each give:
-> exact plan name, monthly price, when you started using it, and what you use it
-> for in practice. Include Claude Code, Codex CLI, Gemini, ChatGPT, local models,
-> n8n, or others only if you genuinely use them.
+1. Scale Tech: employment dates, formal role, team size.
+2. Other lead/PO experience: company, period, team, personal decisions, outcome.
+3. Any defensible before/after observation for the US Bank release work —
+   qualitative is fine, invented is not.
 
 ## Writing constraints
 
@@ -233,3 +323,20 @@ Continue with this exact question:
 - Do not claim measurable improvement until a metric or defensible qualitative
   before/after observation is provided.
 - The final answer should be specific and direct, not promotional copy.
+
+### Added 2026-08-16, after the audit
+
+- **`[TBD]` is a valid answer. A plausible number in place of a `[TBD]` is not.**
+  Nearly every invented fact in the v1.0 graph came from a blank looking
+  unfinished while a filled-in cell looked professional. That instinct is
+  backwards.
+- **Never ship a template containing worked examples.** They get read as
+  findings. This was the single most damaging shape in the v1.0 output.
+- **Quotation marks mean somebody said it.** No illustrative quotes, ever.
+- **Check the artefact against the document it claims to implement.** The v1.0
+  graph contradicted this file and the sent letter on interview counts and on
+  whether protected payment exists.
+- The rules above are no longer only written here. They are enforced by
+  `tools/validate-graph.mjs`, a blocking `PreToolUse` hook, and
+  `.claude/skills/pre-publish-audit/SKILL.md` — because a rule that lives only
+  in a document nobody re-reads at publication time is the rule that got broken.

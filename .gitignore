@@ -1,4 +1,8 @@
 node_modules/
 dist/
+
+# Loop-graph research output. Loop-A transcripts and Loop-D seller profiles are
+# personal data; this repository is public. Enforced by tools/validate-graph.mjs (S1).
+graph/output/
 .DS_Store
 *.local

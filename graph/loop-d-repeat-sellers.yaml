@@ -1,342 +1,404 @@
 ---
 loop: D
-name: Repeat Seller Pattern Analysis & Recruitment
-goal: Identifikuoti 5 patikimus repeat pardavėjus pirmaai cohortai
+name: Repeat Seller Pattern & Recruitment
+goal: Atrinkti ir pakviesti 5 patikimus pakartotinius pardavėjus į pirmąją kohortą
 category: User Research & Recruitment
-duration_days: 14
-parallel_with: [A, B, C]
+plan_source: graph/plan.json
+start_day: P7
+end_day: P19
+parallel_with: [A]
+gated_by: [G1]
+
+# ---------------------------------------------------------------------------
+# ŠIS LOOP'AS BUVO RIMČIAUSIA v1.0 KLAIDA
+#
+# v1.0: `query_paysera_transactions` startavo P3 su `dependencies: none`,
+# `enrich_seller_profiles` traukė tapatybės patvirtinimo statusą ir AML žymas,
+# `recruit_pilot_cohort` nuo P8 siuntė laiškus realiems Paysera klientams —
+# o sutikimas buvo renkamas trečiame verbavimo žingsnyje, jau po profiliavimo.
+# Teisinis pritarimas (Loop-B) buvo numatytas P14, t. y. 11 dienų po to, kai
+# produkcinė klientų duomenų bazė jau buvo užklausta.
+#
+# Licencijuotoje įstaigoje tai ne tvarkos, o sekos klaida: duomenų tvarkymas
+# be užfiksuoto teisinio pagrindo ir AML/KYC duomenų panaudojimas rinkodarai
+# (tikslo apribojimo pažeidimas).
+#
+# Šioje versijoje: startas P7, po G1; KYC/AML laukai iš atrankos pašalinti,
+# nebent G1 juos raštu leidžia; sutikimas — pirmas žingsnis, ne trečias.
+# ---------------------------------------------------------------------------
 
 agents:
   - name: query_paysera_transactions
-    type: database_query + data_extraction
+    type: database_query
+    start_day: P7
+    end_day: P9
+    data_class: customer_personal
+    depends_on: []
+    requires_gate: [G1]
     prompt: |
-      Iš Paysera transactions duomenų bazės:
+      PIRMIAUSIA: patikrink, kad G1 sprendime šis tikslas turi užfiksuotą
+      teisinį pagrindą. Jei `lawful_basis` = NOT PERMITTED arba jo nėra —
+      užklausa nevykdoma ir loop'as sustoja. Tai ne formalumas.
 
-      1. **FILTERS:**
-         - category: "electronics" (phones, laptops, tablets)
-         - time_window: last 90 days
-         - repeat_transactions: >= 2 (sold >= 2 items in this period)
-         - transaction_status: "completed" (not cancelled, disputed)
+      Užklausa į Paysera sandorių duomenis:
 
-      2. **OUTPUT COLUMNS:**
-         - seller_id
-         - seller_name (or anonymized ID)
-         - transaction_count (last 90d)
+      1. FILTRAI:
+         - kategorija: elektronika (telefonai, nešiojamieji, planšetės)
+         - laikotarpis: paskutinės 90 dienų
+         - pakartotiniai sandoriai: >= 2
+         - būsena: „completed"
+
+      2. STULPELIAI — tik elgsenos duomenys:
+         - seller_ref (pseudonimizuotas, ne vardas)
+         - transaction_count (90 d.)
          - avg_transaction_value_EUR
-         - total_value_EUR
-         - first_transaction_date
-         - last_transaction_date
-         - buyer_diversity (how many unique buyers?)
-         - dispute_count (0 = ideal)
-         - chargeback_count
-         - buyer_satisfaction (if available: ratings)
+         - first_transaction_date, last_transaction_date
+         - buyer_diversity (kiek skirtingų pirkėjų)
+         - dispute_count
 
-      3. **INCLUSION CRITERIA (must have all):**
-         - >= 2 completed transactions in last 90 days
-         - avg_transaction_value >= 100 EUR (serious sellers, not penny pushers)
-         - dispute_count = 0 (clean history)
-         - chargeback_count = 0
-         - buyer_diversity >= 2 (not selling to same person repeatedly)
+      3. ATRANKOS KRITERIJAI:
+         - >= 2 užbaigti sandoriai per 90 dienų
+         - vidutinė vertė >= 100 EUR
+         - dispute_count = 0
+         - buyer_diversity >= 2
 
-      4. **SAFETY CHECKS:**
-         - Filter out sellers with AML flags (if flagged)
-         - Filter out sellers with velocity_red_flags (too many sales per day)
-         - Filter out sellers with geographic anomalies (if applicable)
+      4. KO ČIA NĖRA IR KODĖL:
+         v1.0 atranka naudojo AML žymas, chargeback istoriją ir tapatybės
+         patvirtinimo statusą. Šie duomenys surinkti vykdant teisinę prievolę
+         (AML/KYC), o ne produkto tyrimui, todėl pagal nutylėjimą jų
+         pakartotinai nenaudojame — tai tikslo apribojimo klausimas
+         (BDAR 5 str. 1 d. b p.).
 
-      OUTPUT: CSV with filtered seller list (n >= 50 candidates, rank by transaction_count DESC).
+         Rizikos filtravimas vis tiek reikalingas, todėl jis atliekamas
+         KITAIP: sąrašą peržiūri Compliance savo pusėje ir grąžina
+         „tinka / netinka" be pagrindimo detalių. Mes gauname sprendimą,
+         o ne duomenis.
+
+         Jei G1 raštu leidžia tiesioginį naudojimą (`kyc_aml_reuse_permitted:
+         true`), tada ir tik tada šie laukai grįžta į filtrus, nurodant
+         G1 sprendimo datą.
+
+      5. PSEUDONIMIZAVIMAS: darbinis sąrašas — su `seller_ref`.
+         Tikri kontaktai atsiranda tik `recruit_pilot_cohort` žingsnyje ir
+         tik tiems, kas patys sutiko.
+
+      IŠVESTIS: CSV su atrinktais pardavėjais, rikiuota pagal transaction_count.
 
     input:
-      database: "paysera_transactions"
+      database: paysera_transactions
+      g1_precondition: "lawful_basis(query_paysera_transactions) != NOT PERMITTED"
       filters:
-        category: "electronics"
+        category: electronics
         time_window_days: 90
         min_repeat_transactions: 2
-        transaction_status: "completed"
-
+        transaction_status: completed
       inclusion_criteria:
         min_transactions: 2
         min_avg_value_EUR: 100
         max_disputes: 0
-        max_chargebacks: 0
         min_buyer_diversity: 2
-
-      exclusion_criteria:
-        aml_flag: true
-        velocity_red_flag: true
+      risk_screening:
+        performed_by: "Compliance (savo pusėje)"
+        returns: "eligible: true|false"
 
     output_schema: |
-      - seller_id: string (hashed or anonymized)
-      - seller_name: string
+      - seller_ref: string (pseudonimizuotas)
       - transaction_count: integer
       - avg_transaction_value_EUR: float
-      - total_value_EUR: float
       - first_transaction_date: YYYY-MM-DD
       - last_transaction_date: YYYY-MM-DD
       - buyer_diversity_count: integer
       - dispute_count: integer
-      - chargeback_count: integer
-      - satisfaction_score: float (if available)
-      - eligible_for_pilot: bool (all criteria met?)
-      - rank: integer (sorted by transaction_count DESC)
+      - compliance_eligible: bool
+      - rank: integer
 
     success_criteria:
-      critical: ">= 20 eligible sellers found"
-      required: ">= 50 eligible sellers found"
-      nice_to_have: ">= 100 eligible sellers + sub-segment analysis"
+      minimum: 20
+      target: 50
+      stretch: 100
 
-    estimated_duration: 3 days (data extraction + validation)
-    dependencies: none
-    owner: "You (or DB admin) + data team"
+    owner: "Data komanda (užklausa) + Compliance (rizikos peržiūra) + Eimantas"
 
+  # -------------------------------------------------------------------------
   - name: enrich_seller_profiles
     type: data_enrichment
+    start_day: P9
+    end_day: P11
+    data_class: customer_personal
+    depends_on: [query_paysera_transactions]
+    requires_gate: [G1]
     prompt: |
-      Iš top 20 sellers (filtered by query_paysera_transactions),
-      susatinkęs šią informaciją:
+      Iš top 20 pardavėjų surink TIK tai, ko reikia kvietimui išsiųsti ir
+      tinkamumui įvertinti. Duomenų minimizavimas čia yra reikalavimas,
+      o ne rekomendacija.
 
-      1. **CONTACT INFORMATION:**
-         - Current email (from Paysera profile)
-         - Phone number (if shared)
-         - Preferred communication channel (email, in-app message, SMS)
-         - Timezone (inferred from IP or profile)
-         - Preferred language (LT, EN, RU)
+      1. KONTAKTAS (tik pasirinktam kanalui):
+         - Pageidaujamas kanalas (el. paštas arba žinutė programėlėje)
+         - Kalba (LT / EN / RU)
 
-      2. **PROFILE ACTIVITY:**
-         - Profile creation date
-         - Last login date
-         - Profile completeness (0–100%)
-         - Public bio / description (if exists)
-         - Photo / avatar presence
+      2. ELGSENA (iš sandorių, kuriuos jau turime):
+         - Kokias elektronikos kategorijas parduoda dažniausiai
+         - Kainų intervalas
+         - Aktyvumo dažnis
 
-      3. **HISTORICAL BEHAVIOR:**
-         - Average response time to buyer messages
-         - Typical shipping time from sale to delivery
-         - Common item categories (what electronics they sell most?)
-         - Price range preference (budget items vs premium?)
+      3. TINKAMUMAS PILOTUI:
+         - Ar aktyvus per pastarąsias 30 dienų
+         - Ar kategorija atitinka piloto apimtį
 
-      4. **TRUST SIGNALS:**
-         - Verified identity (ID, phone verified?)
-         - Reviews/ratings from buyers (if available)
-         - Repeat buyer count (how many came back?)
-         - Public recommendations / endorsements
+      KO NERENKAME (v1.0 rinko visa tai):
+      - Telefono numerio „jei pasidalinta" — kvietimui jo nereikia
+      - IP nustatytos laiko juostos — profiliavimas be tikslo
+      - Profilio užpildymo procento, avataro, viešos biografijos —
+        „rūpestingumo rodikliai", kurie tėra spėjimas
+      - Susirašinėjimo su pirkėjais žurnalų — svetimas turinys
+      - Tapatybės patvirtinimo statuso — AML/KYC tikslas, ne šis
+      - Atsakymo greičio ir pristatymo trukmės — įdomu, bet kvietimui
+        nereikalinga; renkama tik jei G1 tai atskirai leidžia
 
-      5. **PRODUCT HYPOTHESIS FIT:**
-         - Likely to participate in pilot? (based on profile activity)
-         - Likely to benefit from photo-to-listing AI? (currently manual?)
-         - Pain point alignment (does their history show friction points?)
+      TAISYKLĖ: jei laukas neatsako į klausimą „ar galiu jam išsiųsti
+      kvietimą ir ar jis tinka pilotui" — jis nerenkamas.
 
-      OUTPUT: Enriched seller profiles JSON + ranking for outreach.
+      IŠVESTIS: minimalus profilis + eiliškumas kvietimams.
 
     input:
-      seller_list: "[from query_paysera_transactions top 20]"
-      enrichment_sources:
-        - paysera_profiles
-        - transaction_history (timing patterns)
-        - communication_logs (if available)
-        - identity_verification_status
+      seller_list: "[iš query_paysera_transactions, top 20]"
+      g1_precondition: "lawful_basis(enrich_seller_profiles) != NOT PERMITTED"
+      minimisation_rule: "tik kvietimui ir tinkamumui būtini laukai"
 
     output_schema: |
-      - seller_id: string
-      - contact_email: string
-      - contact_phone: string (optional)
-      - preferred_channel: "email" | "in_app" | "sms"
-      - timezone: string
+      - seller_ref: string
+      - preferred_channel: "email" | "in_app"
       - preferred_language: "lt" | "en" | "ru"
-      - profile_completeness: float (0–1)
-      - avg_response_time_hours: integer
-      - avg_shipping_time_days: integer
       - common_category: string
-      - avg_price_range_EUR: string (e.g., "150–500")
-      - identity_verified: bool
-      - buyer_satisfaction_avg: float (0–5)
-      - repeat_buyer_count: integer
-      - pilot_fit_score: float (0–10, composite metric)
-      - outreach_priority: integer (1 = highest, 20 = lowest)
+      - avg_price_range_EUR: string
+      - active_last_30d: bool
+      - pilot_fit_score: float (0–10)
+      - fit_score_components: [string]   # kad įvertis būtų paaiškinamas
+      - outreach_priority: integer
 
     success_criteria:
-      critical: ">= 15 sellers enriched"
-      required: ">= 20 sellers enriched"
-      nice_to_have: ">= 20 sellers + enrichment completeness >= 90%"
+      minimum: 12
+      target: 20
+      stretch: 20
 
-    estimated_duration: 3 days (API calls + profile analysis)
-    dependencies: "query_paysera_transactions COMPLETE"
-    owner: "You (data aggregation) + Paysera data API"
+    owner: "Eimantas + Paysera data komanda"
 
+  # -------------------------------------------------------------------------
   - name: recruit_pilot_cohort
     type: outreach + consent_management
+    start_day: P11
+    end_day: P17
+    data_class: customer_personal
+    depends_on: [enrich_seller_profiles]
+    requires_gate: [G1]
     prompt: |
-      Iš enriched_seller_profiles, top 20 candidates (ranked by pilot_fit_score):
+      SEKA: sutikimas PIRMAS, dalyvavimas — po jo.
+      v1.0 čia sutikimas buvo trečias punktas, jau po kvietimų ir
+      profiliavimo. Dabar be sutikimo nėra nei skambučio, nei duomenų
+      naudojimo pilote.
 
-      1. **OUTREACH SEQUENCE:**
-         - DAY 1: Send invitation via preferred_channel (email or in-app)
-         - DAY 3: If no response, send reminder
-         - DAY 5: If still no response, try alternate channel
-         - DAY 7: Final touchpoint (if interested, schedule call)
+      1. KVIETIMŲ SEKA:
+         - P11: kvietimas pasirinktu kanalu
+         - P13: vienas priminimas, jei neatsako
+         - P15: paskutinis kontaktas
+         - Antro kanalo bandymo NĖRA, jei žmogus neatsakė pirmuoju:
+           tylėjimas nėra kvietimas bandyti kitur
 
-      2. **INVITATION MESSAGE (customize per channel):**
-
-         EMAIL TEMPLATE:
+      2. KVIETIMO JUODRAŠTIS (galutinę versiją tvirtina G1):
          ---
-         Subject: Try our new Paysera seller tools (test group)
+         Tema: Kviečiame išbandyti naujus Paysera pardavimo įrankius
 
-         Sveiki [seller_name],
+         Sveiki,
 
-         Matėme, kad parduodate elektronikos daiktus per Paysera.
-         Kviečiame jus į Paysera Classifieds beta — naujos pardavimo
-         platformos, kurioje AI padeda greitai sukurti aprašymus.
+         kuriame Paysera Classifieds — nemokamą skelbimų platformą, kurioje
+         AI padeda iš nuotraukos sukurti skelbimą. Ieškome 5 pardavėjų,
+         kurie ją išbandytų pirmieji.
 
-         Jūsų testinė grupė: pirmos 2 savaitės nemokamai.
-         Dalyvavimas: viena konsultacija (30 min) ir pardavimas, kaip įprastai.
+         Ką tai reiškia jums:
+         - viena 30 min konsultacija piloto pradžioje
+         - pardavimas taip, kaip įprastai
+         - 25 EUR cashback už pirmą pardavimą per platformą
 
-         Laisvieji slotvai:
-         [Calendar link OR "Nuo rugsėjo 1"]
+         Platforma yra ir liks nemokama pardavėjams.
 
-         Bonus: 25 EUR cashback už pirmą pardavimą per platformą.
+         Jei sutinkate, paspauskite [nuoroda] — ten pamatysite, kokius
+         duomenis naudosime, kiek laiko juos saugosime ir kaip bet kada
+         atšaukti sutikimą.
 
-         Dėkui,
-         Paysera Team
+         Jei neatsakysite, daugiau nerašysime.
 
+         Pagarbiai,
+         Paysera Classifieds komanda
          ---
 
-         IN-APP MESSAGE (shorter):
-         "Try Paysera Classifieds — AI-powered seller tools.
-         First 2 weeks free. [Schedule call or Learn more]"
+         PASTABA DĖL FORMULUOTĖS: v1.0 kvietime buvo „pirmos 2 savaitės
+         nemokamai" — tai reiškia, kad vėliau bus mokama. Paysera
+         Classifieds pagal apibrėžimą yra nemokama platforma (Task.md).
+         Pažadas, kurio produktas neduoda, yra klaidinantis pranešimas
+         klientui — reguliuojamoje įstaigoje to nedarome.
 
-      3. **CONSENT & DATA:**
-         - Confirm they agree to participate
-         - Get consent for: in-app analytics, user research interview, platform testing
-         - Confirm contact info (email + phone for call scheduling)
+      3. SUTIKIMAS (prieš bet kokį tolesnį veiksmą):
+         - Ką tiksliai naudosime ir kokiu tikslu
+         - Kiek laiko saugosime
+         - Kaip atšaukti
+         - Atskiras sutikimas konsultacijos įrašymui, jei jis bus įrašomas
+         - Sutikimo data ir versija fiksuojama
 
-      4. **CONFIRMATION:**
-         - Send confirmation email with platform onboarding link
-         - Schedule kickoff call (optional, but recommended)
+      4. PATVIRTINIMAS:
+         - Patvirtinimo laiškas su prisijungimo nuoroda
+         - Įžanginio skambučio laikas
 
-      OUTPUT: Recruitment log + cohort confirmation list.
+      SKATINIMAS: 25 EUR, nekintantis. Jei nepavyksta surinkti kohortos,
+      plečiame tinkamų pardavėjų sąrašą ir laiką, o ne didiname sumą.
+      Bet koks pakeitimas grįžta per G1.
+
+      IŠVESTIS: verbavimo žurnalas + patvirtinta kohorta.
 
     input:
-      candidate_list: "[from enrich_seller_profiles, top 20]"
-      outreach_channels: "[seller_preferred_channel]"
+      candidate_list: "[iš enrich_seller_profiles, top 20]"
+      outreach_text: "[iš G1: approved_outreach_text_lt]"
+      consent_text: "[iš G1: approved_consent_text]"
       recruitment_target: 5
       recruitment_backup: 3
-      incentive: "25 EUR cashback"
+      incentive_eur: 25
+      max_reminders: 1
 
     output_schema: |
-      - seller_id: string
-      - contact_channel_1: string
-      - contact_datetime_1: YYYY-MM-DD HH:MM
-      - response_status: "not_contacted" | "invited" | "reminded" | "confirmed" | "declined"
-      - response_datetime: YYYY-MM-DD HH:MM (if applicable)
+      - seller_ref: string
+      - contact_channel: string
+      - contacted_at: YYYY-MM-DD HH:MM
+      - response_status: "invited" | "reminded" | "confirmed" | "declined" | "no_response"
       - consent_obtained: bool
+      - consent_version: string
       - consent_date: YYYY-MM-DD
-      - contact_email: string (final, confirmed)
-      - contact_phone: string (if shared)
+      - recording_consent: bool
+      - contact_email: string   # tik jei consent_obtained = true
       - onboarding_link_sent: bool
       - kickoff_call_scheduled: bool
       - cohort_status: "ready" | "pending_response" | "declined"
 
     success_criteria:
-      critical: ">= 4 confirmed cohort members"
-      required: ">= 5 confirmed cohort members + consent"
-      nice_to_have: ">= 7 confirmed (includes backup)"
+      minimum: "4 patvirtinti su sutikimu"
+      target: "5 patvirtinti su sutikimu"
+      stretch: "7 (su atsarginiais)"
 
-    estimated_duration: 7 days (DAY 3–10: outreach sequence; DAY 11–14: confirmations)
-    dependencies: "enrich_seller_profiles COMPLETE"
-    owner: "You (messaging) + Paysera (in-app notifications)"
+    owner: "Eimantas (komunikacija) + Paysera (pranešimai programėlėje)"
 
+  # -------------------------------------------------------------------------
   - name: analyze_cohort_profile
     type: data_synthesis
+    start_day: P18
+    end_day: P19
+    data_class: customer_personal
+    depends_on: [recruit_pilot_cohort]
+    requires_gate: [G1]
     prompt: |
-      Iš 5 confirmed pilots (recruitment COMPLETE):
+      Iš patvirtintos kohortos (tik tie, kas davė sutikimą) sudaryk
+      kohortos aprašą piloto UX sprendimams.
 
-      1. **COHORT DEMOGRAPHICS:**
-         - Age range (if available from profile)
-         - Location (regional distribution)
-         - Device categories they sell (phones, laptops, both?)
-         - Price range they typically handle
-         - Seller maturity (new vs veteran)
+      1. KOHORTOS SUDĖTIS:
+         - Kategorijos, kuriomis prekiauja
+         - Kainų intervalai
+         - Aktyvumo dažnis
+         - Regionas — tik tiek, kiek reikia, ir tik jei sutikta
 
-      2. **BUSINESS MODEL:**
-         - Volume: how many items per month?
-         - Frequency: consistent weekly OR sporadic?
-         - Profit motive: professional reseller OR hobby?
+      2. VEIKLOS POBŪDIS:
+         - Kiek prekių per mėnesį
+         - Reguliariai ar protrūkiais
+         - Verslas ar papildoma veikla
 
-      3. **TECH SAVVINESS:**
-         - Profile completeness (proxy for care)
-         - Photo quality in past listings (manual or AI-friendly?)
-         - Response speed (engaged users)
+      3. SKAUSMO TAŠKŲ ATITIKIMAS:
+         - Ar jų elgsena atitinka Loop-A rastas temas?
+         - Kur nesutampa? Nesutapimas yra svarbesnis radinys nei sutapimas.
 
-      4. **PAIN POINT ALIGNMENT:**
-         - Do they mention friction in description?
-         - Time spent per listing (if can infer)?
-         - Likely to appreciate photo-to-listing automation?
+      4. RIZIKOS PROFILIS:
+         - Ginčų istorija (0 ginčų — atrankos sąlyga)
+         - Compliance grąžintas tinkamumo sprendimas
 
-      5. **RISK PROFILE:**
-         - Clean history (0 disputes, 0 chargebacks)
-         - Buyer satisfaction high?
-         - Any suspicious patterns?
+      DRAUDIMAI:
+      - Nerašyk „vidutinis amžius 36", jei amžiaus duomenų nerinkome.
+      - Kiekvienas skaičius turi turėti šaltinį ir imtį (n=5).
+      - n=5 yra kokybinė imtis. Vidurkiai iš penkių žmonių pateikiami
+        kaip aprašymas, o ne kaip statistika.
 
-      OUTPUT: Cohort brief + personas for pilot UX design.
+      IŠVESTIS: kohortos aprašas + personos piloto UX'ui.
 
     input:
-      confirmed_cohort: "[5 sellers from recruit_pilot_cohort COMPLETE]"
-      enrichment_data: "[from enrich_seller_profiles]"
+      confirmed_cohort: "[iš recruit_pilot_cohort, tik consent_obtained = true]"
+      enrichment_data: "[iš enrich_seller_profiles]"
 
     output_schema: |
       cohort_summary:
-        size: 5
-        avg_transactions_per_month: float
-        avg_item_value_EUR: float
+        size: integer
+        sample_note: "n=5 — kokybinė imtis, ne statistinė"
+        avg_transactions_per_month: {value: float, n: integer}
+        avg_item_value_EUR: {value: float, n: integer}
         primary_categories: [string]
-        geographic_spread: [string]
-        avg_satisfaction_score: float
-
-      seller_personas: [
-        {
-          persona_name: string (e.g., "Casual Upgrader")
+        geographic_spread: [string]   # tik su sutikimu
+      seller_personas:
+        - persona_name: string
           count: integer
           typical_behavior: string
           likely_friction_points: [string]
           motivation_for_pilot: string
-        }
-      ]
-
-      cohort_risk_assessment: "low" | "medium" (should be "low" for pilot)
+          derived_from: [seller_ref]
+      alignment_with_loop_a:
+        matches: [string]
+        mismatches: [string]
+      cohort_risk_assessment: "low" | "medium"
 
     success_criteria:
-      critical: "5 sellers cohort profile documented"
-      required: "cohort summary + 2–3 seller personas"
-      nice_to_have: "personas with quotes from recruitment conversations"
+      minimum: "kohortos aprašas dokumentuotas"
+      target: "aprašas + 2–3 personos + palyginimas su Loop-A"
+      stretch: "personos su citatomis iš verbavimo pokalbių (su sutikimu)"
 
-    estimated_duration: 2 days (DAY 12–14)
-    dependencies: "recruit_pilot_cohort COMPLETE"
-    owner: "You + Claude AI (pattern synthesis)"
+    owner: "Eimantas + Claude (dėsningumų sintezė)"
 
 exit_conditions:
   completion:
-    - metric: "eligible_sellers_found"
-      critical: ">= 20"
-      required: ">= 50"
+    - metric: eligible_sellers
+      minimum: 20
+      target: 50
+      stretch: 100
 
-    - metric: "seller_profiles_enriched"
-      critical: ">= 15"
-      required: ">= 20"
+    - metric: profiles_enriched
+      minimum: 12
+      target: 20
+      stretch: 20
 
-    - metric: "cohort_members_confirmed"
-      critical: ">= 4 with consent"
-      required: ">= 5 with consent + contact info"
-      nice_to_have: ">= 7 (includes backup)"
+    - metric: cohort_confirmed
+      minimum: 4
+      target: 5
+      stretch: 7
 
-    - metric: "cohort_profile_documented"
-      critical: "basic summary (size, categories)"
-      required: "detailed summary + personas"
+    - metric: cohort_profile_documented
+      minimum: "sudėtis ir kategorijos"
+      target: "aprašas + personos + palyginimas su Loop-A"
+
+  binary_requirements:
+    - id: g1_before_query
+      description: "Jokios užklausos į klientų duomenis prieš uždarant G1"
+      substitute_allowed: false
+    - id: consent_before_participation
+      description: "Sutikimas gaunamas prieš dalyvavimą ir prieš duomenų naudojimą pilote"
+      substitute_allowed: false
+    - id: no_kyc_reuse
+      description: "AML/KYC duomenys nenaudojami atrankai be atskiro G1 leidimo"
+      substitute_allowed: false
 
   timeline:
-    deadline: "DAY 14 23:59 UTC"
-    warning_threshold: "DAY 10 18:00 UTC — if < 3 confirmed"
-    fail_threshold: "DAY 15 09:00 UTC — if < 4 confirmed"
+    start_day: P7
+    deadline: "P19 pabaiga"
+    warning_threshold: "P14 — jei patvirtinta < 3"
 
   escalation:
     if_behind_schedule: |
-      - DAY 8: < 20 eligible sellers found → broaden filters (lower min_value_EUR OR include sellers with 1 transaction)
-      - DAY 11: < 3 confirmed → increase incentive (50 EUR instead of 25) OR personal outreach call
-      - DAY 13: < 4 confirmed → extend recruitment to DAY 17, proceed with 4 if necessary
+      - P13: < 20 tinkamų pardavėjų → plėsti filtrus (žemesnė vidutinė vertė
+        arba 1 sandoris per 90 d.). Filtrų keitimas fiksuojamas ir
+        praneša Compliance.
+      - P15: < 3 patvirtinti → plėsti kandidatų sąrašą nuo 20 iki 40 ir
+        pridėti asmeninį kvietimą per Paysera vidinį tinklą.
+        Skatinimas NEDIDINAMAS.
+      - P17: < 4 patvirtinti → pilotas startuoja su 4, tai fiksuojama
+        brief'e kaip apribojimas. Kohorta nepildoma pardavėjais, kurie
+        neatitinka atrankos kriterijų.

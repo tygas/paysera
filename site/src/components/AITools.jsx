@@ -1,17 +1,6 @@
 import { useInView } from "../hooks";
 import { aiTools, methodologySteps } from "../data";
 
-function Bar({ pct, color, visible }) {
-  return (
-    <div className="relative h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-      <div
-        className="absolute inset-y-0 left-0 rounded-full transition-all duration-1000 ease-out"
-        style={{ width: visible ? `${pct}%` : "0%", backgroundColor: color }}
-      />
-    </div>
-  );
-}
-
 function LoopDiagram() {
   const steps = methodologySteps;
   const colors = ["#dc2626", "#d97706", "#dc2626", "#d97706"];
@@ -77,19 +66,20 @@ export default function AITools() {
             key={t.name}
             className="group p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-red-400/50 dark:hover:border-red-500/40 transition-colors duration-200"
           >
-            <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
-              <div>
-                <span className="font-semibold text-slate-900 dark:text-white text-sm">{t.name}</span>
-                <span className="ml-2 text-xs text-slate-400 font-medium">{t.cost}</span>
-              </div>
+            <div className="flex items-baseline justify-between flex-wrap gap-2">
+              <span className="font-semibold text-slate-900 dark:text-white text-sm">{t.name}</span>
               <span
-                className="text-lg font-extrabold tabular-nums transition-all duration-700"
-                style={{ color: t.color }}
+                className="text-xs font-semibold px-2 py-0.5 rounded-full border transition-opacity duration-700"
+                style={{
+                  color: t.color,
+                  borderColor: `${t.color}55`,
+                  backgroundColor: `${t.color}12`,
+                  opacity: visible ? 1 : 0,
+                }}
               >
-                {visible ? `${t.pct}%` : "—"}
+                {t.since}
               </span>
             </div>
-            <Bar pct={t.pct} color={t.color} visible={visible} />
             <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">{t.use}</p>
           </div>
         ))}

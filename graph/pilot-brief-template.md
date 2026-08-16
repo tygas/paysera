@@ -1,446 +1,407 @@
-# PAYSERA CLASSIFIEDS: 30-DAY PILOT BRIEF
-## Used Electronics Category (Phones, Laptops)
+# PAYSERA CLASSIFIEDS — CONCIERGE PILOT BRIEF (TEMPLATE)
+## Used electronics (phones, laptops), LT market
 
-**Prepared by:** [Your name]
-**Date:** [Today's date]
-**Pilot Start:** [Target date]
-**Pilot End:** [Target date + 30 days]
-**Status:** DRAFT → INTERNAL REVIEW → CEO APPROVAL
+> **THIS IS AN EMPTY TEMPLATE.** Every `[TBD]` is a slot that Loop-E fills with a
+> measured result. A `[TBD]` that survives into the final brief is an honest
+> answer. A number invented to replace a `[TBD]` is a defect.
+>
+> Template version 2.0 (2026-08-16). Version 1.0 shipped with worked examples —
+> a five-seller cohort table, "12/15 mentions", "7.5/10 accuracy",
+> "2M+ verified users", "€2B EU market", an NPS of 7.8/10 and verbatim seller
+> quotes — none of which came from any research, because no research had been
+> done. Those examples read as findings. They are all removed. See
+> `AUDIT-graph-2026-08-16.md`.
 
----
-
-## EXECUTIVE SUMMARY
-
-Paysera Classifieds launches in the used electronics category (phones, laptops) with 5 pilot sellers over 30 days. 
-
-**The opportunity:** Used electronics represents ~[X]k annual GMV in Lithuania with high fraud risk and trust friction. Paysera's existing platform (payment verification, identity confirmation) eliminates friction that plagues OLX and manual Facebook groups.
-
-**The hook:** AI-powered listing creation (photo → description + price range) cuts seller time from 15–20 minutes to ~5 minutes while improving description quality. This solves the #1 pain point for repeat sellers.
-
-**Why now:** 
-- Paysera has 2M+ verified users with existing payment infrastructure
-- EU regulations (PSD2, AML) demand identity verification — this is our moat
-- AI vision + NLP are production-ready (Claude Vision + Haiku 4.5)
-
-**Pilot success metrics:**
-- 14-day sell-through rate ≥ 50% (vs. seller historical baseline)
-- Listing creation time ≤ 5 minutes
-- Seller NPS ≥ 7/10
-- Zero disputes or chargebacks during pilot
-
-**If successful:** Expand to auto category (DAY 30+), recruit 50 sellers, launch public beta (DAY 60+).
+| | |
+|---|---|
+| **Prepared by** | [TBD] |
+| **Date** | [TBD] |
+| **Prep window** | P1–P30 (this loop graph) |
+| **Live pilot window** | L1–L30 (starts the day after P30) |
+| **Status** | DRAFT → INTERNAL REVIEW (P26) → CEO DECISION (P27) |
 
 ---
 
-## I. MARKET & OPPORTUNITY
+## 0. WHAT THIS BRIEF IS AND IS NOT — READ FIRST
 
-### 1.1 Category Overview
+*This page is mandatory and is never cut for length. It exists so the reader
+knows the weight of every number that follows.*
 
-Used electronics (phones, laptops, tablets) is a ~€2B market in the EU. In Lithuania:
-- High volume: Vinted (600k+ active users), OLX classifieds, Facebook Marketplace
-- High friction: No identity verification, payment disputes common, scams frequent
-- High trust gap: Buyers fear counterfeits, sellers fear chargebacks
+### 0.1 Provenance legend
 
-**Paysera's position:** 2M+ verified users, existing payment rails, identity infrastructure.
+Every factual statement below carries exactly one tag.
 
-### 1.2 Seller Pain Points (from research)
+| Tag | Meaning |
+|-----|---------|
+| `[A:n]` | From Loop-A interviews. `n` = actual number of transcripts. |
+| `[B]` | From Loop-B, with source document or named approver. |
+| `[C]` | From Loop-C measurement, with sample size. |
+| `[D]` | From Loop-D data query, with query date. |
+| `[EXT:url]` | External public source. Link must resolve and be dated. |
+| `[HYPOTHESIS]` | Not evidence. Stated as a hypothesis, never in the past tense. |
+| `[TBD]` | Deliberately unfilled. |
 
-Based on 15 interviews with repeat sellers (phones + laptops, last 90 days):
+**An untagged factual claim blocks this brief.** It is a binary exit condition
+of Loop-E, not a style note.
 
-1. **Payment trust (Theme severity: HIGH, 12/15 mentions)**
-   - "I'm worried the buyer will say the item wasn't as described, then get a chargeback"
-   - "If I ship first, what guarantees do I have the buyer will pay?"
-   - **Mitigation:** Paysera escrow + protected payment (7-day hold)
+### 0.2 What we measured, and how little of it
 
-2. **Time friction (Theme severity: HIGH, 14/15 mentions)**
-   - "Creating a listing takes 15–20 minutes: photos, description, pricing, research"
-   - "I just want to upload a photo and sell — that's it"
-   - **Mitigation:** AI photo-to-listing (reduces to ~5 min)
+| | Sample | Meaning |
+|---|---|---|
+| Interviews | `[TBD] of 10–12 planned` | Qualitative. Directional, not representative. |
+| AI test photos | `[TBD] of 10 planned` | n=10 cannot establish an accuracy rate. It shows failure modes. |
+| Pilot cohort | `[TBD] of 5 planned` | n=5. Averages here describe five people, not a market. |
 
-3. **Description quality (Theme severity: MEDIUM, 10/15 mentions)**
-   - "I describe the condition poorly, buyers ask 50 questions I already answered"
-   - "Professional listings get more inquiries, but I don't have time"
-   - **Mitigation:** AI generates professional descriptions from photos
+### 0.3 Not confirmed at time of writing
 
-4. **Pricing uncertainty (Theme severity: MEDIUM, 8/15 mentions)**
-   - "Is 200 EUR fair for an iPhone 12? I check eBay / Vinted, but prices vary wildly"
-   - **Mitigation:** AI recommends price range based on model + condition
+| Open item | Owner | Blocks pilot launch? |
+|---|---|---|
+| `[TBD — from Loop-B open_items]` | `[TBD]` | `[TBD]` |
 
-### 1.3 Paysera's Advantage Over Competitors
+### 0.4 Hypotheses, not findings
 
-| Dimension | OLX | Facebook | Vinted | **Paysera** |
-|-----------|-----|----------|--------|-----------|
-| Identity verification | Limited | None | ID required | ✅ GDPR-compliant |
-| Protected payment | None | Limited | Built-in | ✅ 7-day escrow |
-| Dispute resolution | Slow | Manual | Fast | ✅ Legal SLA |
-| Seller onboarding | Manual | Social | Simple | ✅ AI-assisted listing |
-| Buyer trust | Low | Very low | High | ✅ Paysera verification |
-
----
-
-## II. PILOT DESIGN
-
-### 2.1 Pilot Cohort: 5 Repeat Sellers
-
-**Selection criteria:**
-- ≥ 2 transactions in last 90 days (proven active)
-- 0 disputes, 0 chargebacks (clean history)
-- Avg transaction value ≥ 100 EUR (serious sellers)
-- Willing to participate in 30-day concierge pilot
-
-**Cohort composition:**
-
-| Seller | Type | Freq | Avg Value | Primary Category | History | Motivation |
-|--------|------|------|-----------|------------------|---------|-----------|
-| [Name 1] | Casual upgrader | 4/month | 220 EUR | Phones | 6 sales, 0 disputes | Time savings |
-| [Name 2] | Professional reseller | 8/month | 280 EUR | Phones (60%), Laptops (40%) | 18 sales, 0 disputes | Volume + margins |
-| [Name 3] | Casual upgrader | 3/month | 150 EUR | Phones | 5 sales, 0 disputes | Easier selling |
-| [Name 4] | Casual upgrader | 2/month | 350 EUR | Laptops | 4 sales, 0 disputes | Better pricing |
-| [Name 5] | Part-time | 5/month | 210 EUR | Mixed electronics | 10 sales, 0 disputes | Description help |
-
-**Risk assessment:** LOW. All 5 sellers have clean transaction history. No AML flags, no rapid velocity anomalies.
-
-### 2.2 Feature Set for Pilot
-
-#### Feature 1: Photo-to-Listing AI
-- Seller uploads 3–5 photos of used device
-- Claude Vision recognizes model, storage, color, condition
-- Claude Haiku generates title (≤100 chars), description (50–150 words), price range
-- Seller edits before publishing (or accepts as-is)
-- **Quality bar:** v2 prompt achieves 7.5/10 accuracy (title + specs correct 75% of time)
-
-#### Feature 2: Protected Payment + Escrow
-- Buyer pays into Paysera
-- Payment held for 7 days (standard escrow period)
-- Buyer confirms receipt + condition matches (or disputes)
-- On day 7: payment released to seller OR escalates to legal team
-- **Safety:** Paysera covers <500 EUR disputes; >500 EUR escalates to legal@paysera
-
-#### Feature 3: Identity Verification
-- Seller: Verified via Paysera existing flow (email + phone OR national ID)
-- Buyer: Same verification
-- Platform displays verification badge (trust signal)
-
-#### Feature 4: Dispute Resolution
-- Buyer initiates dispute via in-app form (condition, missing parts, damage)
-- Platform escalates to legal@paysera within 24h
-- Legal reviews photos + buyer claim + seller response
-- Decision within 5 business days (refund buyer OR dismiss claim)
-
-### 2.3 Timeline
-
-| Week | Phase | Deliverables | Owner |
-|------|-------|--------------|-------|
-| **1** | Onboarding | Seller training videos, FAQ, first listing | You + sellers |
-| **2–4** | Live selling | Sellers list items, track metrics, collect feedback | Sellers (ad-hoc support) |
-| **4** | Analysis | Metrics review, seller interviews, success/fail decision | You |
-
-**Daily sync recommended:** 15-min standup with CTO to track cohort progress.
+| Hypothesis | What would confirm it | Status |
+|---|---|---|
+| Protected payment / funds holding is available for consumer classifieds under Paysera's licence | `[B]` written confirmation | `[TBD]` |
+| Photo-led listing creation materially reduces seller effort | `[C]` measurement + `[A:n]` sellers confirm | `[TBD]` |
+| Verified identity + in-product payment reduces the pull toward external scam links | Live pilot `[L1–L30]` | `[TBD]` |
 
 ---
 
-## III. SUCCESS CRITERIA
+## I. EXECUTIVE SUMMARY
 
-### 3.1 Quantitative Metrics
+Paysera Classifieds runs a concierge pilot in used electronics (phones, laptops)
+with `[TBD:D]` sellers over 30 days (L1–L30).
 
-| Metric | Critical | Target | Nice-to-have | How to measure |
-|--------|----------|--------|-------------|-----------------|
-| **14-day sell-through rate** | ≥ 40% | ≥ 50% | ≥ 60% | (sold in 14d) / (total active listings) |
-| **Listing creation time** | ≤ 10 min | ≤ 5 min | ≤ 3 min | Time from first photo to publish |
-| **AI description quality** | ≥ 6/10 | ≥ 7/10 | ≥ 8/10 | Human review (title + specs + clarity) |
-| **Zero disputes** | Critical | All 5 sellers | N/A | Dispute count = 0 during pilot |
-| **Participation rate** | ≥ 60% | 100% | N/A | (sellers listing ≥3 items) / 5 |
+**The problem being tested.** `[A:n]` — the seller-side friction the interviews
+actually surfaced, in order of how often it came up, with the denominator.
 
-### 3.2 Qualitative Metrics
+**The intervention.** AI-assisted listing creation from photos, paired with
+Paysera-verified identity. `[C]` — measured quality and its sample size.
 
-| Metric | How to measure | Success threshold |
-|--------|-----------------|-------------------|
-| **Seller NPS** | Post-pilot survey: "Likelihood to recommend? (0–10)" | ≥ 7/10 average |
-| **Payment trust** | "I trust Paysera escrow to protect me" (1–5 scale) | ≥ 4/5 average |
-| **Feature adoption** | "AI description was helpful" (1–5 scale) | ≥ 4/5 average |
-| **Support burden** | Tickets per seller during pilot | ≤ 2 per seller (goal: <1) |
+**The trust hypothesis.** `[HYPOTHESIS]` Protected payment inside the product
+reduces the need to move the transaction to external channels where the known
+fraud patterns live `[EXT: https://www.paysera.com/v2/en/fraud-prevention]`.
+Whether Paysera may hold funds in a consumer-classifieds transaction is a
+Loop-B question, not an assumption `[TBD:B]`.
 
-### 3.3 Failure Modes
+**Primary metric.** 14-day sell-through: share of activated listings reaching a
+confirmed completed transaction within 14 days, measured against **each
+seller's own prior history**, not a market average.
 
-| Failure Mode | Trigger | Response |
-|--------------|---------|----------|
-| **Low sell-through (<40%)** | Day 21+ sell-through < 40% | Diagnose: pricing? description? platform visibility? |
-| **Disputes** | Any dispute raised by buyer | Escalate to legal immediately; diagnose root cause |
-| **Low NPS (<5/10)** | Post-pilot: NPS < 5 | Collect feedback; identify UX friction |
-| **Seller churn** | < 3 of 5 complete ≥3 listings | Extend pilot timeline OR declare "product-market fit not yet achieved" |
+**Decision requested from the CEO on P27.** One of:
+1. Launch the pilot as scoped.
+2. Launch with reduced scope — specifically `[TBD]`.
+3. Do not launch; the missing evidence is `[TBD]`.
 
 ---
 
-## IV. LEGAL & COMPLIANCE
+## II. MARKET & OPPORTUNITY
 
-✅ **Approved by:** [Legal team name], [email], [date]
+### 2.1 Competitive set — LT
 
-### 4.1 Constraints & Safeguards
+> Template note: version 1.0 benchmarked this product against **OLX, eBay and
+> Vinted**. OLX is not a meaningful player in Lithuania, eBay is marginal here,
+> and Vinted is a fashion-resale marketplace — not a used-electronics
+> competitor. The CEO's own letter names the actual set. Naming the wrong
+> incumbents is the clearest possible signal that the market was never checked.
 
-**Transaction limits:**
-- Max transaction size per listing: 1,500 EUR (AML threshold)
-- Max 10 transactions per seller per day (velocity check)
+| Competitor | Relevance | What we can say about it |
+|---|---|---|
+| **skelbiu.lt** | Primary — general classifieds incl. electronics | `[TBD — EXT source required]` |
+| **autoplius.lt** | Auto vertical; relevant to the L31+ expansion | `[TBD — EXT source required]` |
+| **aruodas.lt** | Real-estate vertical | `[TBD — EXT source required]` |
+| **Facebook Marketplace / LT buy-sell groups** | Where a large share of used-electronics trade actually happens | `[TBD — EXT source required]` |
 
-**Prohibited items:**
-- Stolen goods (IMEI blacklist if available)
-- Counterfeit goods (manual review for high-value items)
-- Regulated electronics (hazmat, radiological)
-- Items requiring licenses (professional equipment)
+**Adjacent, deliberately not counted as a competitor:** Vinted — LT-founded,
+strong trust and logistics design, but fashion resale. Useful as a design
+reference. Not a price comparable for used electronics.
 
-**Identity verification:**
-- Seller: Email + phone verified (minimum)
-- Buyer: Same
-- Repeat seller: Expedited flow (already verified)
+**Every cell above needs a dated public source or it stays `[TBD]`.** No claim
+about a competitor's identity verification, dispute speed or user count goes
+into this brief on memory.
 
-**Dispute escalation:**
-- Buyer → Support (in-app form)
-- Support → Legal (within 24h, if claim ≥ 100 EUR OR fraud suspected)
-- Legal decision within 5 business days
+### 2.2 Category size
 
-**Compliance with GDPR:**
-- Photos + messages stored for 30 days post-transaction (audit trail)
-- Personal data deleted on request (GDPR right to erasure)
-- No third-party sharing without explicit consent
+`[TBD — EXT source required]`
 
-### 4.2 Insurance & Liability
+> Template note: v1.0 asserted a "~€2B EU market" and "Vinted (600k+ active
+> users)" with no source. Both are removed. If no defensible figure exists,
+> the correct content of this section is: "We could not size this category
+> from public sources. Here is what we can measure inside Paysera instead:
+> `[D]`."
 
-- Paysera covers transactions < 500 EUR (chargeback risk)
-- Transactions 500–1,500 EUR: shared liability (seller responsible for item authenticity)
-- Disputes > 1,500 EUR: escalate to legal (rare in electronics category)
+### 2.3 Paysera's actual starting position
 
----
+| Asset | Claim | Tag |
+|---|---|---|
+| Verified user base | `[TBD]` | `[D]` — from internal data, not from memory |
+| Payment infrastructure | `[TBD]` | `[B]` |
+| Merchant reach | Paysera publicly states its Checkout serves 13,000+ e-shops | `[EXT: https://www.paysera.com/ — verify and date before use]` |
 
-## V. ROADMAP: DAY 30 → FULL LAUNCH
+> Template note: v1.0 claimed "2M+ verified users" twice. That number was never
+> sourced. Anything in this table comes from a query or a public page, dated.
 
-### 5.1 If Pilot Succeeds (all 4 metrics hit "Target")
+### 2.4 Seller pain points
 
-**DAY 30–40:** Preparation
-- Expand seller cohort: 5 → 50 (recruit next wave)
-- Optimize AI prompt: v2 → v3 (iterate on feedback)
-- Add buyer-side features: offers, bulk messaging, saved listings
+*Filled by Loop-E from `extract_insights`. One row per theme that actually
+appeared. Do not add a theme because it is plausible.*
 
-**DAY 40–60:** Soft launch
-- Open to all 50 sellers, monitored closely
-- In-app promotion: "Beta: Paysera Classifieds"
-- Collect metrics + feedback for auto category expansion
+| # | Theme | Mentions | Severity | Product response | Tag |
+|---|---|---|---|---|---|
+| 1 | `[TBD]` | `[TBD] / [n]` | `[TBD]` | `[TBD]` or **NONE — gap** | `[A:n]` |
 
-**DAY 60+:** Public launch
-- Expand to auto category (same workflow, higher prices)
-- Open to all Paysera users
-- Plan: Classifieds becomes 10% of Paysera GMV within 12 months
+**Verbatim quotes.** Only sentences an interviewee actually said, each with a
+call ID. Paraphrase is labelled as paraphrase.
 
-### 5.2 If Pilot Has Issues (1 metric misses "Target")
+> Template note: v1.0 shipped four fully-written quotes ("I'm worried the buyer
+> will say the item wasn't as described…") attributed to 15 interviews that
+> never took place. Invented quotes are the single most damaging kind of
+> fabrication in a research document, because they are the part a reader
+> trusts most.
 
-**Diagnose:** Which metric failed?
+### 2.5 Themes with no product response — the gap list
 
-| Metric | Root cause (hypothesis) | Iteration |
-|--------|---|---|
-| Sell-through < 50% | Pricing too high OR description poor | Adjust AI prompt; lower prices by 10%; increase buyer visibility |
-| NPS < 7 | UX friction OR payment trust | Simplify onboarding; emphasize escrow in marketing |
-| Disputes raised | Buyer expectations misaligned | Better description checklist; buyer education |
-| Quality < 7/10 | AI hallucinations OR corner cases | Refine prompt; add manual review layer |
-
-**Response:** Pick ONE high-impact iteration, re-run with same 5 sellers (DAY 35–45), re-measure (DAY 45).
-
-**If re-run succeeds:** Proceed with expansion.
-**If re-run fails:** Pause classifieds, diagnose deeper (product-market fit issue?), pivot.
+`[TBD]` — carried forward from synthesis. This section is not optional and is
+not moved to an appendix.
 
 ---
 
-## VI. APPENDICES
+## III. PILOT DESIGN
 
-### Appendix A: Seller Persona
+### 3.1 Cohort
 
-**Name:** Repeat Seller (Electronics)
+**Selection criteria** (behavioural only — see Loop-D on why KYC/AML fields are
+excluded):
+- ≥ 2 completed electronics transactions in the last 90 days
+- Average transaction value ≥ 100 EUR
+- 0 disputes
+- ≥ 2 distinct buyers
+- Compliance eligibility decision returned as `eligible` `[B]`
+- Consent obtained **before** participation `[D]`
 
-**Demographics:**
-- Age: 28–45
-- Location: Urban Lithuania (Vilnius, Kaunas)
-- Tech comfort: Intermediate (uses Paysera, but not power user)
-- Seller type: Casual upgrader or part-time reseller
+**Cohort composition** — filled from `analyze_cohort_profile`, n=5:
 
-**Selling behavior:**
-- Frequency: 3–8 items/month
-- Categories: Phones 60%, Laptops 30%, Tablets 10%
-- Avg item value: 150–350 EUR
-- Listing time (current): 15–20 min per item
+| Seller ref | Frequency | Avg value | Category | Consent date | Tag |
+|---|---|---|---|---|---|
+| `[TBD]` | `[TBD]` | `[TBD]` | `[TBD]` | `[TBD]` | `[D]` |
 
-**Pain points:**
-1. Time-consuming listing process
-2. Uncertainty about pricing
-3. Fear of payment fraud / chargebacks
-4. Difficulty writing compelling descriptions
+> Template note: v1.0 shipped this table filled in — five sellers with names,
+> monthly frequencies, average values, sale counts and motivations, plus
+> "Risk assessment: LOW. No AML flags." Nobody had been recruited. A reader
+> skimming the brief would have taken it for a recruited cohort.
 
-**Trust triggers:**
-- Paysera's existing reputation (already use for buying)
-- Verified buyer/seller badges
-- Protected payment + escrow
-- Legal dispute resolution
+**Sample caveat (mandatory):** n=5 is a qualitative cohort. Averages describe
+these five sellers only.
 
-**Objections:**
-- "Will AI descriptions match my style?"
-- "What if the price recommendation is too low?"
-- "How do I handle disputes?"
+### 3.2 Features in the pilot
 
-**Success drivers:**
-- Saves 10+ min per listing (convenience)
-- Better descriptions → more inquiries (quality)
-- Peace of mind (payment protection)
+| # | Feature | Status | Tag |
+|---|---|---|---|
+| 1 | Photo-to-listing AI | Measured on n=`[TBD]` photos, quality `[TBD]/10` | `[C]` |
+| 2 | Identity verification | Existing Paysera flow, scope confirmed | `[B]` |
+| 3 | Protected payment / funds holding | **HYPOTHESIS — pending legal confirmation** | `[HYPOTHESIS]` + `[TBD:B]` |
+| 4 | Dispute handling | Routing and SLA | `[TBD:B]` |
 
----
+> Template note: v1.0 described a "7-day escrow", "Paysera covers <500 EUR
+> disputes" and "Legal decision within 5 business days" as settled product
+> behaviour, in a document whose own Loop-B had not yet asked whether the
+> licence permits any of it. The application letter had correctly called
+> protected payment a hypothesis. The graph then contradicted the letter it
+> was implementing.
 
-### Appendix B: Workflow Checklist (Seller-Facing)
+### 3.3 Constraints the pilot imposes on itself
 
-**Title:** How to List Your Item on Paysera Classifieds
+| Constraint | Value | Nature | Tag |
+|---|---|---|---|
+| Max transaction per listing | 1,500 EUR | **Pilot risk limit, self-imposed** | `[B]` approval `[TBD]` |
+| Regulatory thresholds (AML and other) | `[TBD]` | Statutory — quote the source | `[B]` |
+| Funds hold period | `[TBD]` | Only if permitted | `[TBD:B]` |
+| Dispute escalation threshold | `[TBD]` | | `[TBD:B]` |
+| Liability split | `[TBD]` | | `[TBD:B]` |
 
-#### Step 1: Prepare Your Item
-- [ ] Clean the device
-- [ ] Gather specs (brand, model, storage, color, year)
-- [ ] Assess condition: Mint / Good / Fair / Poor
-- [ ] Check for: cracks, dents, scratches, missing parts
+> Template note: v1.0 wrote "Max transaction size per listing: 1,500 EUR (AML
+> threshold)". 1,500 EUR is not an AML threshold — it was our own risk limit,
+> mislabelled as a statutory one. In a licensed institution, presenting a
+> self-imposed limit as a regulatory requirement misleads everyone downstream
+> who then treats it as non-negotiable, and hides the fact that the real
+> thresholds were never looked up. The same document then escalated
+> "disputes > 1,500 EUR" — impossible under its own cap.
 
-#### Step 2: Take Photos
-- [ ] 3–5 clear photos (natural lighting)
-- [ ] Include: Front, back, sides (show condition)
-- [ ] Avoid: shadows, cluttered backgrounds
-- [ ] Include: Box / charger (if available)
+### 3.4 Timeline
 
-#### Step 3: Upload & Auto-Generate
-- [ ] Click "Sell item" → Select category (phone / laptop)
-- [ ] Upload photos
-- [ ] Review AI-generated title + description
-- [ ] (Optional) Edit title or description
+| Window | Phase | Deliverable | Owner |
+|---|---|---|---|
+| **L1–L7** | Onboarding | Seller walkthrough, first listing | PO + sellers |
+| **L8–L28** | Live selling | Listings, metrics, weekly feedback | Sellers, ad-hoc support |
+| **L29–L30** | Analysis | Metrics review, exit interviews, go/no-go | PO |
 
-#### Step 4: Set Price
-- [ ] Check AI price recommendation
-- [ ] Adjust if needed (market comparables)
-- [ ] Publish
+*Prep window P1–P30 is the loop graph in `README.md`. The live pilot clock
+starts at L1.*
 
-#### Step 5: Legal & Safety
-- [ ] Confirm: Item is not stolen
-- [ ] Confirm: Item is not counterfeit
-- [ ] Confirm: Item matches description
-- [ ] Acknowledge: Paysera buyer protection + escrow
-
-#### Step 6: Publish & Monitor
-- [ ] Click "Publish"
-- [ ] Share on Facebook / friends (optional)
-- [ ] Monitor inquiries in-app
-
-#### FAQ
-- **Q: Can I edit after publishing?** A: Yes, via "Edit" button.
-- **Q: What if the description is wrong?** A: Customize before publishing.
-- **Q: What if no buyer after 14 days?** A: Relist for free or adjust price.
-- **Q: What happens if I sell?** A: Buyer pays into escrow; you ship; buyer confirms receipt; payment released.
+> Template note: v1.0 used one "DAY n" clock for both windows, so "DAY 30"
+> meant "concierge pilot starts" in `README.md` and "pilot has finished, begin
+> expansion" in this document's roadmap. Two clocks, named.
 
 ---
 
-### Appendix C: Legal Checklist (from Loop-B)
+## IV. SUCCESS CRITERIA
 
-**Pilot Guardrails:**
-1. Transaction max: 1,500 EUR (AML compliance)
-2. Prohibited items: Stolen goods, counterfeits, hazmat
-3. Seller verification: Email + phone (minimum)
-4. Dispute SLA: 5 business days (legal decision)
-5. Data retention: 30 days post-transaction
-6. Chargeback cover: < 500 EUR (Paysera); > 500 EUR (escalate)
+### 4.1 Quantitative
 
----
+| Metric | Minimum | Target | Stretch | How measured |
+|---|---|---|---|---|
+| 14-day sell-through | 40% | 50% | 60% | Sold within 14d / activated listings, vs each seller's own baseline |
+| Listing creation time | ≤ 10 min | ≤ 5 min | ≤ 3 min | First photo to published |
+| AI listing quality | ≥ 6/10 | ≥ 7/10 | ≥ 8/10 | Blind human review vs ground truth |
+| Hallucinated specs | ≤ 5% | 0% | 0% | Listings containing a spec not visible/derivable from the photo |
+| Participation | ≥ 3 of 5 sellers list ≥ 3 items | 5 of 5 | — | Platform data |
 
-### Appendix D: Interview Insights Summary (from Loop-A)
+**Hallucination rate is a safety metric, not a quality metric.** A listing that
+states a storage size or condition the device does not have is a misleading
+statement to a consumer, published by a regulated institution.
 
-**Theme 1: Payment Trust (12/15 mentions, CRITICAL)**
-- Key quote: "I'm afraid the buyer will claim the item is damaged, then I lose the money."
-- Mitigation: 7-day escrow + Paysera dispute resolution
-- Product implication: Emphasize escrow in seller onboarding
+### 4.2 Qualitative
 
-**Theme 2: Time Friction (14/15 mentions, CRITICAL)**
-- Key quote: "Creating a listing takes forever. I just want to upload a photo and sell."
-- Mitigation: AI photo-to-listing (5 min vs. 15–20 min)
-- Product implication: AI description must work out-of-box for 70%+ of listings
+| Metric | How measured | Threshold |
+|---|---|---|
+| Recommendation score | "How likely are you to recommend this to another seller?" 0–10 | Mean ≥ 8 |
+| Payment confidence | "I would trust this to protect me" 1–5 | Mean ≥ 4 |
+| AI usefulness | "The AI draft saved me time" 1–5 | Mean ≥ 4 |
+| Support burden | Tickets per seller | ≤ 2 |
 
-**Theme 3: Description Quality (10/15 mentions, HIGH)**
-- Key quote: "Professional listings get 2x inquiries, but I don't have time."
-- Mitigation: AI generates professional descriptions
-- Product implication: Quality bar for AI output is high (7/10 minimum)
+> Template note: v1.0 set "Seller NPS ≥ 7/10" and reported a cohort "NPS
+> (pre-pilot): 7.8/10". NPS is a promoter-minus-detractor figure on a −100 to
+> +100 scale, not an x/10 score — and at n=5 a single detractor swings it by
+> 20 points, so it carries no information. Renamed to a plain mean
+> recommendation score and rescaled.
 
-**Theme 4: Pricing Uncertainty (8/15 mentions, MEDIUM)**
-- Key quote: "eBay prices are 50 EUR cheaper than Facebook. How do I know fair price?"
-- Mitigation: AI price recommendations based on model + condition
-- Product implication: Price range must be ±15% of market, not wide guesses
+### 4.3 What a failure looks like
 
----
+| Failure | Trigger | Response |
+|---|---|---|
+| Low sell-through | < 40% by L21 | Diagnose pricing / description / visibility before changing the product |
+| Any dispute | 1 raised | Escalate per `[B]`; treat as a finding, not an accident |
+| Hallucinated listing published | 1 occurrence | Stop auto-publish, add mandatory review step, report to `[B]` |
+| Cohort attrition | < 3 of 5 complete ≥ 3 listings | Report as "insufficient evidence", not as failure of the idea |
 
-### Appendix E: AI Quality Report (from Loop-C)
-
-**Tested:** 10 photos (phones, laptops, tablets)
-**Prompt versions:** 3 (v1: baseline, v2: marketplace-optimized, v3: seller-focused)
-
-**Results:**
-
-| Dimension | v1 | v2 | v3 | Winner |
-|-----------|----|----|----|----|
-| **Title accuracy** | 70% | 75% | 73% | v2 |
-| **Description clarity** (Flesch score) | 55 | 62 | 58 | v2 |
-| **Price realism** (±% deviation) | ±18% | ±12% | ±15% | v2 |
-| **Condition detection** | 70% | 80% | 75% | v2 |
-| **Overall quality** | 6.5/10 | 7.5/10 | 7/10 | **v2** |
-
-**Recommendation:** Use v2 prompt for pilot. Monitor edge cases (damaged devices, counterfeit detection).
+> Template note: v1.0 listed "Zero disputes or chargebacks during pilot" as a
+> success metric. Zero disputes across five sellers over 30 days is the
+> expected outcome under any design — it measures cohort size, not product
+> quality, and it creates pressure to under-report. Kept as a trigger, dropped
+> as a success metric.
 
 ---
 
-### Appendix F: Cohort Profile (from Loop-D)
+## V. LEGAL & COMPLIANCE
 
-**Recruitment:** 20 eligible sellers contacted → 5 confirmed
+**Scope sign-off (G2):** `[TBD — name, role, email, date]`
+**Status:** `[TBD: SIGNED | OPEN]`
 
-**Cohort characteristics:**
-- Avg age: 36
-- Geographic spread: 3 from Vilnius, 1 Kaunas, 1 Klaipėda
-- Avg monthly volume: 4.4 items/month
-- Avg item value: 232 EUR
-- Clean history: 0 disputes, 0 chargebacks (across 43 total transactions)
-- Primary category: Phones (64%)
-- NPS (pre-pilot, recruitment call): 7.8/10
+> Template note: v1.0 printed "✅ **Approved by:** [Legal team name], [email],
+> [date]" — a green check mark rendered above three empty placeholders. A
+> template must never ship a pre-drawn approval mark. Anyone copying the
+> template inherits the tick and not the approval.
 
-**Seller personas:**
-1. **"Casual upgrader"** (3 sellers) — sell their own used phones/laptops, 2–4/month
-2. **"Part-time reseller"** (1 seller) — buy + resell, 5–8/month, higher volume
-3. **"Professional reseller"** (1 seller) — dedicated business, 8+/month, bulk buyer
+### 5.1 Confirmed constraints
 
----
+`[TBD]` — one row per rule from `pilot_checklist.json`, each with its source
+document quote or named approver.
 
-## VII. NEXT STEPS
+### 5.2 Open items
 
-**Internal approval (DAY 20):**
-- [ ] CTO reviews brief (technical feasibility)
-- [ ] Legal reviews constraints (compliance)
-- [ ] Marketing reviews go-to-market (messaging)
+`[TBD]` — carried from Loop-B `open_items`. Also reproduced on page 1 (§0.3).
+Items marked `blocking: true` prevent pilot launch.
 
-**CEO presentation (DAY 20–21):**
-- [ ] Present brief (10 min overview)
-- [ ] Answer questions (10 min)
-- [ ] Seek go/no-go decision
+### 5.3 Data protection
 
-**If approved (DAY 22–30):**
-- [ ] Seller onboarding (3–5 days)
-- [ ] Platform integration testing (2–3 days)
-- [ ] Soft launch (internal staff testing) (1–2 days)
-- [ ] Go live with 5 sellers (DAY 30)
+| Question | Answer | Tag |
+|---|---|---|
+| Lawful basis per purpose | `[TBD]` | `[B]` (G1 decision) |
+| DPIA required | `[TBD]` | `[B]` |
+| Retention and deletion | `[TBD]` | `[B]` |
+| KYC/AML data reused for recruitment | Default **no** | `[B]` |
 
 ---
 
-## Approval Sign-Off
+## VI. ROADMAP AFTER L30
 
-| Role | Name | Date | Signature |
-|------|------|------|-----------|
-| Prepared by | [Your name] | [Date] | |
-| Legal review | [Legal lead] | [Date] | |
-| CTO review | [CTO name] | [Date] | |
-| CEO approval | Kostas Noreika | [Date] | |
+*All roadmap dates are on the L clock. There is no "DAY 30" here.*
+
+### 6.1 If the evidence supports expansion
+
+| Window | Action |
+|---|---|
+| **L31–L40** | Grow cohort from 5 toward `[TBD]`; iterate the winning prompt |
+| **L41–L60** | Soft launch to the expanded cohort, monitored |
+| **L61+** | Consider the auto vertical — higher values, different legal scope, needs its own Loop-B |
+
+### 6.2 If one metric misses
+
+Pick **one** high-impact change, re-run with the same cohort, re-measure. Do not
+change three things at once — with n=5 nothing will be attributable.
+
+| Metric missed | First hypothesis to test |
+|---|---|
+| Sell-through | Pricing, then description, then visibility |
+| Recommendation score | Onboarding friction |
+| AI quality | Prompt, then a mandatory review step |
+| Any dispute | Expectation-setting in the listing itself |
+
+### 6.3 If the evidence does not support continuing
+
+Say so. State what was learned, what it cost, and what would change the answer.
+
+> Template note: v1.0 ended §5.1 with "Plan: Classifieds becomes 10% of Paysera
+> GMV within 12 months." That number had no basis of any kind. Removed rather
+> than replaced.
 
 ---
 
-**Document version:** 1.0 (DRAFT)
-**Last updated:** [Today]
-**Next review:** [Date + 7 days]
+## VII. APPENDICES
+
+Each appendix is generated by Loop-E from a specific loop output. **None of them
+ship pre-filled.**
+
+| | Appendix | Source | Must contain |
+|---|---|---|---|
+| A | Seller persona | Loop-E `create_persona` | A "what we do not know" section |
+| B | Seller workflow checklist | Loop-E `generate_workflow_checklist` | No unconfirmed product promises |
+| C | Legal checklist | Loop-B `map_to_pilot_scope` | Source per rule; open items |
+| D | Interview insights | Loop-A `extract_insights` | Real denominators; verbatim flags |
+| E | AI quality report | Loop-C `quality_check_outputs` | Sample size; blind-review note |
+| F | Cohort profile | Loop-D `analyze_cohort_profile` | n=5 caveat; consent dates |
+
+> Template note: v1.0's Appendices D, E and F were fully written out — theme
+> counts, a v1/v2/v3 comparison matrix with Flesch scores, cohort demographics
+> "Avg age: 36 … across 43 total transactions". A reader had no way to tell
+> these apart from real output. That is the failure this whole section exists
+> to prevent.
+
+---
+
+## VIII. DECISION & SIGN-OFF
+
+**Internal review — P26 (both mandatory):**
+
+- [ ] CTO — technical feasibility
+- [ ] Legal / Compliance — constraints and open items
+
+**CEO decision — P27:**
+
+- [ ] Brief presented (10 min)
+- [ ] Questions (10 min)
+- [ ] Decision recorded: launch / reduced scope / stop
+
+| Role | Name | Date | Decision |
+|---|---|---|---|
+| Prepared by | `[TBD]` | `[TBD]` | |
+| Legal / Compliance | `[TBD]` | `[TBD]` | |
+| CTO | `[TBD]` | `[TBD]` | |
+| CEO | `[TBD]` | `[TBD]` | |
+
+---
+
+**Template version:** 2.0
+**Supersedes:** 1.0 (2026-08-11) — see `AUDIT-graph-2026-08-16.md`
+**Validated by:** `node tools/validate-graph.mjs`
