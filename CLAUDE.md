@@ -40,8 +40,8 @@ validator enforces this".
 `test-implementation-checks.mjs` exists for that reason: it reintroduces each
 defect into a temporary copy of the tree and asserts the validator reports it.
 `test-validator.mjs` cannot cover the newer checks, because v1.0 predates the
-structures they read. See
-[`AUDIT-graph-implementation-2026-08-16.md`](AUDIT-graph-implementation-2026-08-16.md).
+structures they read. See part II of
+[`AUDIT-graph-2026-08-16.md`](AUDIT-graph-2026-08-16.md).
 
 ---
 
@@ -129,26 +129,11 @@ Applies to prose, agent prompts, YAML comments and email templates alike — the
 | `Application-progress.md` | Fact-vs-claim working file for the application |
 | `Paysera-atsakymas.md` | The reply that was sent |
 | `Part2-atsakymas.md` | The follow-up reply |
-| `AUDIT-graph-2026-08-16.md` | Findings and fixes for the v1.0 graph |
-| `AUDIT-graph-implementation-2026-08-16.md` | Findings and fixes for the v2.0 graph *as an implementation* — gates, edges, thresholds, and the checks meant to hold them |
+| `AUDIT-graph-2026-08-16.md` | Findings and fixes: part I — the v1.0 graph as a document; part II — the v2.0 graph as an implementation |
 | `graph/plan.json` | **Single source of truth** for the loop graph |
 | `graph/` | The loop graph — five loops, two gates |
 | `tools/` | Pre-publish validator and its regression test |
-| `site/` | The application site (Vite + React), deployed to GitHub Pages |
 | `.claude/skills/pre-publish-audit/` | The review procedure |
 
 `graph/output/` is gitignored: it holds interview transcripts and seller
 profiles, which are personal data, and this repository is public.
-
----
-
-## Site
-
-```bash
-cd site && npm run dev      # local
-cd site && npm run deploy   # build + gh-pages
-```
-
-The site links to `graph/`. Anything wrong in `graph/` is publicly linked from
-the application — which is exactly how the 2026-08-11 defects reached the
-reader.
