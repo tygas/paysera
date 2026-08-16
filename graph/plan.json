@@ -122,7 +122,7 @@
         "loop_e.draft_pilot_brief"
       ],
       "blocks_loops": ["loop_e"],
-      "on_miss": "The brief is presented to the CEO as 'scope pending legal sign-off' with the unsigned items listed on the first page. The pilot does not launch."
+      "on_miss": "Loop-E and the CEO presentation slip until G2 closes. Open items remain visible on page 1 after drafting resumes. The pilot does not launch."
     },
     "G3": {
       "name": "publication_approval",
@@ -148,7 +148,7 @@
       ],
       "blocks_agents": [],
       "blocks_loops": [],
-      "blocks": ["ceo_presentation"],
+      "blocks": ["ceo_decision"],
       "on_miss": "The CEO presentation moves to a later date. A brief Legal has not reviewed is not presented. Being behind schedule buys a later date, never a skipped review."
     }
   },

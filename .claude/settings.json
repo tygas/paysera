@@ -1,0 +1,23 @@
+{
+  "$comment": [
+    "Project settings, committed on purpose.",
+    "The hook below is the enforced half of the process change described in",
+    "AUDIT-graph-2026-08-16.md: publishing commands are blocked while",
+    "tools/validate-graph.mjs is failing. A checklist has to be opened; a hook",
+    "does not."
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node tools/pre-publish-guard.mjs",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

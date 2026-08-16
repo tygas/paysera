@@ -59,7 +59,7 @@
       "decided_by": null,
       "decided_at": null,
       "blocks_loops": [],
-      "blocks": ["ceo_presentation"],
+      "blocks": ["ceo_decision"],
       "deliverables_received": {
         "cto_review": { "met": false, "reviewer": null, "date": null, "substitute_allowed": false },
         "legal_review": { "met": false, "reviewer": null, "date": null, "substitute_allowed": false }
@@ -140,7 +140,7 @@
       "p4_no_g1_meeting": "Escalate to CEO the same day. G1 blocks two of four loops.",
       "p6_g1_not_closed": "Loops A and D do not start. Schedule slips day-for-day. Loop-C continues.",
       "p12_under_10_rules": "Narrow the pilot scope rather than skip rules.",
-      "p15_g2_not_closed": "Brief marked 'scope unconfirmed'; open items on page 1; pilot does not launch."
+      "p15_g2_not_closed": "Loop-E and the CEO presentation slip until G2 closes. Open items remain visible on page 1 after drafting resumes; the pilot does not launch."
     }
   },
 

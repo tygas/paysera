@@ -54,9 +54,9 @@ Kelio „tęsiam laukdami pritarimo" nėra.
 Pasirašytos piloto ribos: sandorio riba, draudžiamos prekės, patikros lygis,
 ginčų SLA, eskalavimo keliai.
 
-Blokuoja: Loop-E teiginius apie patvirtintas ribas.
-Neuždarytas → brief'as pateikiamas kaip „apimtis nepatvirtinta", atviri punktai
-surašomi pirmame puslapyje, pilotas nestartuoja.
+Blokuoja: visą Loop-E ir CEO pristatymą.
+Neuždarytas → Loop-E ir CEO pristatymas slenka, kol G2 uždaromas. Kai rengimas
+atnaujinamas, atviri punktai lieka pirmame puslapyje; pilotas nestartuoja.
 
 ### G3 — publikavimo patvirtinimas · uždaromas **P26 pabaigoje**
 

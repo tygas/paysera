@@ -6,3 +6,7 @@ dist/
 graph/output/
 .DS_Store
 *.local
+
+.idea/
+.omx/
+.claude/settings.local.json

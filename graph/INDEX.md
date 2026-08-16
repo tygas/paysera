@@ -219,7 +219,7 @@ Gate state is tracked separately and explicitly:
 | P12 | Loop-B: < 10 rules documented | Narrow pilot scope rather than skip rules |
 | P14 | Loop-D: < 3 confirmed | **Warning threshold** — no action yet, watch the response rate |
 | P15 | Loop-D: < 3 confirmed | Extend candidate list 20 → 40; incentive unchanged |
-| P15 | G2 not closed | Brief marked "scope unconfirmed"; open items on page 1; pilot does not launch |
+| P15 | G2 not closed | Loop-E and CEO presentation slip until G2 closes; open items stay on page 1; pilot does not launch |
 | P17 | Loop-D: < 4 confirmed | Launch with 4, recorded as a limitation. Do not admit sellers who fail criteria. |
 | P18 | Loop-A: < 10 interviews | Loop-A ends P22, Loop-E starts P23, CEO decision P29. Review is never compressed. |
 | P23 | Loop-E not started | Cut appendices — never page 1 and never provenance tags |
