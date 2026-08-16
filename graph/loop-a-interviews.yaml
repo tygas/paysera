@@ -306,11 +306,12 @@ exit_conditions:
       stretch: 100
 
     - metric: theme_saturation
+      direction: binary
       definition: "paskutiniuose 3 pokalbiuose neatsirado naujų temų"
       required_for_target: true
 
   binary_requirements:
-    - id: recording_consent
+    - id: recording_consent_before_recording
       description: "Kiekvienas įrašas turi užfiksuotą sutikimą prieš įrašymą"
       substitute_allowed: false
 

@@ -13,12 +13,12 @@
 
   "pilot": {
     "name": "Paysera Classifieds concierge pilot",
-    "category": "used_electronics",
+    "category": "used_electronics_phones_laptops",
     "market": "LT",
     "prep_window_days": 30,
     "live_pilot_days": 30,
     "prep_start_date": "TBD",
-    "live_start_date": "TBD",
+    "live_start_date": "TBD (= prep_start_date + 30d)",
     "status": "planning"
   },
 
@@ -37,7 +37,8 @@
         "dpia_screening": false,
         "retention_and_deletion": false,
         "approved_outreach_text": false,
-        "permitted_external_sources": false
+        "permitted_external_sources": false,
+        "all_planned_purposes_permitted": false
       },
       "no_bypass": "There is no 'proceed pending approval' state. Pending means blocked."
     },
@@ -49,6 +50,11 @@
       "decided_by": null,
       "decided_at": null,
       "blocks_loops": ["loop_e"],
+      "deliverables_received": {
+        "signed_pilot_legal_checklist": false,
+        "named_approver": false,
+        "open_constraints_recorded": false
+      },
       "open_items": []
     },
     "G3": {
@@ -162,8 +168,8 @@
       "prompt_versions":     { "direction": "higher_better", "minimum": 2, "target": 3,  "stretch": 3,  "current": 0, "status": "not_started" },
       "quality_score_of_10": { "direction": "higher_better", "minimum": 6, "target": 7,  "stretch": 8,  "current": null, "status": "not_started" },
       "hallucination_rate_pct": { "direction": "lower_better", "maximum": 5, "target": 0, "stretch": 0, "current": null, "status": "not_started",
-        "definition": "Share of generated listings containing a specification the device does not have, measured against the human ground truth recorded before the run. Above 5% Loop-C has FAILED — this is a fail threshold, not a note." },
-      "prompt_version_selected": { "direction": "binary", "definition": "One prompt version recommended, with the numbers and the sample-size caveat behind it.", "current": false, "status": "not_started" }
+        "definition": "Share of generated listings containing a specification the device does not have, measured against the human ground truth recorded before the run." },
+      "prompt_version_selected": { "direction": "binary", "definition": "One prompt version is recommended, with the numbers and the sample-size caveat behind the recommendation.", "current": false, "status": "not_started" }
     },
     "binary_requirements": {
       "blind_review":            { "met": null, "substitute_allowed": false },
@@ -201,7 +207,7 @@
       "eligible_sellers":  { "direction": "higher_better", "minimum": 20, "target": 50, "stretch": 100, "current": 0, "status": "not_started" },
       "profiles_enriched": { "direction": "higher_better", "minimum": 12, "target": 20, "stretch": 20,  "current": 0, "status": "not_started" },
       "cohort_confirmed":  { "direction": "higher_better", "minimum": 4,  "target": 5,  "stretch": 7,   "current": 0, "status": "not_started" },
-      "cohort_profile_documented": { "direction": "binary", "definition": "Composition and categories documented, with the n=5 qualitative-sample caveat on every average.", "current": false, "status": "not_started" }
+      "cohort_profile_documented": { "direction": "binary", "definition": "Composition and categories documented, with the actual-n qualitative-sample caveat on every average.", "current": false, "status": "not_started" }
     },
     "binary_requirements": {
       "no_query_before_g1":            { "met": null, "substitute_allowed": false },
@@ -239,8 +245,8 @@
       "loop_outputs_integrated": { "direction": "higher_better", "minimum": 4, "target": 4, "stretch": 4, "current": 0, "status": "not_started" },
       "personas":                { "direction": "higher_better", "minimum": 1, "target": 1, "stretch": 3, "current": 0, "status": "not_started" },
       "checklist_steps":         { "direction": "higher_better", "minimum": 6, "target": 6, "stretch": 6, "current": 0, "status": "not_started" },
-      "untagged_claims":         { "direction": "lower_better", "maximum": 0, "target": 0, "stretch": 0, "current": null, "status": "not_started" },
-      "tbd_count":               { "direction": "informational", "definition": "Count of [TBD] placeholders left in the brief. No threshold: a [TBD] is an honest answer; an invented number is not.", "current": null }
+      "untagged_claims":         { "direction": "lower_better", "maximum": 0, "target": 0, "stretch": 0, "definition": "Factual statements in the brief carrying no provenance tag. Zero is the only passing value.", "current": null, "status": "not_started" },
+      "tbd_count":               { "direction": "informational", "definition": "Count of [TBD] placeholders left in the brief.", "current": null }
     },
     "binary_requirements": {
       "provenance_complete":       { "met": null, "substitute_allowed": false },
@@ -272,7 +278,10 @@
   ],
 
   "data_retention": {
-    "$comment": "G1 decides the period and the owner; both are [TBD] until it runs. Tracked here because nothing in the graph executed the deletion G1 authorises the research on.",
+    "$comment": "Global control because the due date may fall after P30. G1 assigns a named owner and retention period; completion remains tracked until deletion evidence exists.",
+    "control_id": "research_data_deletion",
+    "assigned_by_gate": "G1",
+    "status": "pending_g1",
     "retention_days": "[TBD — G1]",
     "deletion_owner": "[TBD — G1]",
     "deletion_due": "[TBD — prep_start_date + retention_days]",

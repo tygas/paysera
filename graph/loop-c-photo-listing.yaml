@@ -30,15 +30,15 @@ agents:
       1. Savi ir kolegų įrenginiai — nufotografuoti specialiai šiam testui
       2. Sintetiškai sugeneruotos nuotraukos
       3. Licencijuotos pavyzdinės bibliotekos (licencija užfiksuojama indekse)
-      4. Paysera archyvas — TIK jei G1 tai leidžia ir tik nuasmeninta
 
       NELEIDŽIAMA:
       - Nuotraukos, nusiurbtos iš skelbiu.lt, Facebook, Vinted ar eBay skelbimų.
         v1.0 čia buvo įrašyta „Public marketplaces — Vinted, eBay listings".
         Tai svetimas turinys ir kartu asmens duomenys. Testui to nereikia.
 
-      MATRICA — 10 nuotraukų pasiskirstymas:
-      - Įrenginiai: 5 telefonai, 3 nešiojamieji, 2 planšetės
+      TIKSLINĖ MATRICA — planuojamų 10 nuotraukų pasiskirstymas:
+      - Įrenginiai: 5 telefonai, 5 nešiojamieji kompiuteriai
+      - Jei surenkamas tik minimumas, proporcijos išlaikomos, o faktinis n užrašomas
       - Būklė: 3 „kaip nauja", 4 „gera", 2 „patenkinama", 1 „prasta"
       - Fotografavimo kokybė: 3 profesionalios, 5 įprastos telefonu, 2 prastos
 
@@ -50,20 +50,20 @@ agents:
 
     input:
       target_count: 10
-      devices: {phones: 5, laptops: 3, tablets: 2}
+      devices: {phones: 5, laptops: 5}
       condition_distribution: {mint: 3, good: 4, fair: 2, poor: 1}
       photo_quality_distribution: {professional: 3, consumer: 5, poor: 2}
 
     output_schema: |
       - photo_id: string
-      - source: "own_device" | "synthetic" | "licensed" | "paysera_archive_anonymised"
+      - source: "own_device" | "synthetic" | "licensed"
       - license_note: string
-      - device_type: "phone" | "laptop" | "tablet"
+      - device_type: "phone" | "laptop"
       - device_model: string
       - condition: "mint" | "good" | "fair" | "poor"
       - photo_quality: "professional" | "consumer" | "poor"
       - file_path: string
-      - human_ground_truth: {title, description, price_range_EUR, price_basis}
+      - human_ground_truth: {device_model, memory, color, condition, actual_specs, visible_specs, price_range_EUR, price_basis}
 
     success_criteria:
       minimum: 8
@@ -107,16 +107,15 @@ agents:
 
       5. PATIKROS:
          - Pavadinimas telpa į 100 simbolių?
-         - Ar aprašyme nėra prasimanytų specifikacijų? (Modelis, kurio
-           nuotraukoje nesimato, yra haliucinacija, o ne spėjimas.)
+         - Ar aprašyme nėra specifikacijų, kurių įrenginys neturi pagal
+           prieš paleidimą užrašytą etaloninę tiesą? Teisinga, bet nuotraukoje
+           nematoma savybė žymima kaip nepatikrinama, ne kaip haliucinacija.
          - Ar kainos intervalas realus LT rinkai?
          - Ar būklė sutampa su etalonine tiese?
 
-      KAINŲ PALYGINIMAS: LT rinkos šaltiniai (skelbiu.lt, FB grupės),
-      jei ir kiek G1 leidžia juos rinkti. eBay ir Vinted kainos šiam
-      palyginimui netinka: eBay Lietuvoje beveik nenaudojamas, o Vinted
-      yra drabužių perpardavimo prekyvietė. v1.0 versijoje čia buvo
-      „market prices from eBay/Vinted API" — tai buvo ne tos rinkos etalonas.
+      KAINŲ PALYGINIMAS: prieš testą užfiksuota sintetinė / licencijuota
+      kainų lentelė, kurioje nėra skelbimų autorių ar kitų asmens duomenų.
+      Gyvi prekyviečių skelbimai šiame negatuotame agente nerenkami.
 
     input:
       photos_index: "[iš collect_test_photos]"
@@ -124,7 +123,7 @@ agents:
         vision_and_generation: "Claude (vaizdo įvestis Messages API) — modelio versija fiksuojama kartu su rezultatais"
         price_inference: "taisyklėmis paremta lentelė (modelis + būklė), kalibruota pagal LT palyginamuosius"
       prompt_versions: 3
-      price_comparables: "[G1 patvirtinti LT šaltiniai]"
+      price_comparables: "fiksuota sintetinė / licencijuota testinė lentelė, užrašyta prieš paleidimą"
 
     output_schema: |
       - photo_id: string
@@ -145,7 +144,7 @@ agents:
     success_criteria:
       minimum: "8 nuotraukos, >= 2 prompt'o versijos"
       target: "10 nuotraukų, 3 prompt'o versijos"
-      stretch: "10 nuotraukų, 3 versijos + aklas vertinimas su realiais pardavėjais"
+      stretch: "12 nuotraukų, 3 versijos + antras nepriklausomas aklas vertinimas"
 
     owner: "Eimantas (prompt'ai) + Claude (generavimas)"
 
@@ -184,9 +183,9 @@ agents:
 
       4. LAIMĖJUSI VERSIJA:
          - Kurią rekomenduoji ir kodėl, remiantis skaičiais
-         - Imties dydis nurodomas prie kiekvieno skaičiaus (n=10)
-         - Prie išvados pridedama: n=10 yra orientacinis, ne statistiškai
-           reikšmingas rezultatas
+         - Prie kiekvieno skaičiaus nurodomas faktinis imties dydis (n)
+         - Prie išvados pridedama: faktinė maža imtis yra orientacinė, ne
+           statistiškai reikšminga
 
       IŠVESTIS: kokybės ataskaita + prompt'o pasirinkimas su pagrindimu.
 
@@ -217,7 +216,7 @@ agents:
     success_criteria:
       minimum: "8 nuotraukos peržiūrėtos, vidutinis įvertis >= 6/10"
       target: "10 nuotraukų peržiūrėtos, vidutinis įvertis >= 7/10"
-      stretch: "vidutinis įvertis >= 8/10 + realių pardavėjų vertinimas"
+      stretch: "vidutinis įvertis >= 8/10 + antras nepriklausomas aklas vertinimas"
 
     owner: "Eimantas (rankinis vertinimas) + Claude (matavimų automatika)"
 

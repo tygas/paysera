@@ -21,12 +21,112 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 
-const PUBLISHING = [
-  /\bgit\s+commit\b/,
-  /\bgit\s+push\b/,
-  /\bnpm\s+run\s+deploy\b/,
-  /\bgh-pages\b/,
+const REQUIRED_CHECKS = [
+  { file: 'tools/validate-graph.mjs', args: ['--strict'] },
+  { file: 'tools/test-validator.mjs', args: [] },
+  { file: 'tools/test-implementation-checks.mjs', args: [] },
+  { file: 'tools/test-pre-publish-guard.mjs', args: [] },
 ];
+
+const unquote = (token) => {
+  if (token.length >= 2 && ((token[0] === '"' && token.at(-1) === '"') ||
+      (token[0] === "'" && token.at(-1) === "'"))) return token.slice(1, -1);
+  return token;
+};
+
+function commandSegments(command) {
+  // Hooks receive shell source, not an argv array. We only inspect executable
+  // position in each statement. That avoids blocking harmless prose such as
+  // `Write-Output 'git push'`, while still handling ;, &&, ||, pipes and lines.
+  const normalized = command.replace(/(?:\\|`)\r?\n/g, ' ');
+  return normalized.split(/&&|\|\||[;&|\r\n]/)
+    .map((segment) => [...segment.matchAll(/"(?:\\.|[^"])*"|'(?:''|[^'])*'|\S+/g)].map((m) => unquote(m[0])))
+    .filter((tokens) => tokens.length);
+}
+
+function gitSubcommand(tokens) {
+  const valueOptions = new Set(['-c', '-C', '--git-dir', '--work-tree', '--namespace', '--config-env']);
+  for (let i = 1; i < tokens.length; i += 1) {
+    const token = tokens[i];
+    if (!token.startsWith('-')) return token.toLowerCase();
+    const option = token.split('=')[0];
+    if (valueOptions.has(option) && !token.includes('=')) i += 1;
+  }
+  return null;
+}
+
+function publishKind(command, depth = 0) {
+  if (depth > 3) return null;
+  for (const tokens of commandSegments(command)) {
+    const executable = (tokens[0] || '').toLowerCase().split(/[\\/]/).at(-1);
+    if (/^git(?:\.exe)?$/.test(executable)) {
+      const subcommand = gitSubcommand(tokens);
+      if (subcommand === 'commit') return 'commit';
+      if (subcommand === 'push') return 'release';
+    }
+    if (/^npm(?:\.cmd|\.exe)?$/.test(executable)) {
+      const words = tokens.slice(1).filter((token) => !token.startsWith('-')).map((token) => token.toLowerCase());
+      const runIndex = words.indexOf('run');
+      if (runIndex >= 0 && words[runIndex + 1] === 'deploy') return 'release';
+    }
+    if (/^gh-pages(?:\.cmd|\.exe)?$/.test(executable)) return 'release';
+    if (/^(?:cmd(?:\.exe)?)$/.test(executable)) {
+      const switchIndex = tokens.findIndex((token, index) => index > 0 && /^\/[ck]$/i.test(token));
+      if (switchIndex >= 0) {
+        const nested = publishKind(tokens.slice(switchIndex + 1).join(' '), depth + 1);
+        if (nested) return nested;
+      }
+    }
+    if (/^(?:powershell|pwsh)(?:\.exe)?$/.test(executable)) {
+      const switchIndex = tokens.findIndex((token, index) => index > 0 && /^-(?:command|c)$/i.test(token));
+      if (switchIndex >= 0) {
+        const nested = publishKind(tokens.slice(switchIndex + 1).join(' '), depth + 1);
+        if (nested) return nested;
+      }
+    }
+    if (/^(?:bash|sh)(?:\.exe)?$/.test(executable)) {
+      const switchIndex = tokens.findIndex((token, index) => index > 0 && token === '-c');
+      if (switchIndex >= 0) {
+        const nested = publishKind(tokens.slice(switchIndex + 1).join(' '), depth + 1);
+        if (nested) return nested;
+      }
+    }
+    if (/^(?:sudo|env)(?:\.exe)?$/.test(executable)) {
+      const nested = publishKind(tokens.slice(1).join(' '), depth + 1);
+      if (nested) return nested;
+    }
+  }
+  return null;
+}
+
+function gitOutput(args) {
+  return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 15_000 }).trim();
+}
+
+function enforceSnapshot(kind) {
+  const pathspec = ['--', 'graph', 'tools', '.gitignore'];
+  try {
+    gitOutput(['rev-parse', '--is-inside-work-tree']);
+    if (kind === 'commit') {
+      const unstaged = gitOutput(['diff', '--name-only', ...pathspec]);
+      const untracked = gitOutput(['ls-files', '--others', '--exclude-standard', ...pathspec]);
+      if (unstaged || untracked)
+        throw new Error(`Relevant working-tree files differ from the staged snapshot:\n${[unstaged, untracked].filter(Boolean).join('\n')}`);
+    } else {
+      const dirty = gitOutput(['status', '--porcelain', '--untracked-files=all', ...pathspec]);
+      if (dirty)
+        throw new Error(`Relevant files differ from the HEAD being published:\n${dirty}`);
+    }
+  } catch (error) {
+    process.stderr.write(
+      'BLOCKED by pre-publish-guard: cannot validate the exact snapshot being published.\n\n' +
+      `${error.stderr || error.message || error}\n\n` +
+      'For commit: stage every graph/tools change and leave no unstaged or untracked copy.\n' +
+      'For push/deploy: commit every graph/tools change first.\n',
+    );
+    process.exit(2);
+  }
+}
 
 let raw = '';
 process.stdin.setEncoding('utf8');
@@ -36,29 +136,39 @@ process.stdin.on('end', () => {
   try {
     command = JSON.parse(raw || '{}')?.tool_input?.command ?? '';
   } catch {
-    process.exit(0); // unparseable input is not this hook's problem
-  }
-
-  if (!PUBLISHING.some((re) => re.test(command))) process.exit(0);
-
-  try {
-    execFileSync('node', ['tools/validate-graph.mjs'], {
-      cwd: ROOT,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    process.exit(0);
-  } catch (e) {
-    const out = `${e.stdout || ''}${e.stderr || ''}`.trim();
-    process.stderr.write(
-      'BLOCKED by pre-publish-guard: tools/validate-graph.mjs is failing.\n\n' +
-        out +
-        '\n\nThis repository is public and is read as evidence of how I work.\n' +
-        'Fix the findings above, then publish. If a finding is a false positive,\n' +
-        'fix the check in tools/validate-graph.mjs rather than working around it —\n' +
-        'and run tools/test-validator.mjs to confirm the check still catches the\n' +
-        'defects it was written for.\n',
-    );
+    process.stderr.write('BLOCKED by pre-publish-guard: malformed hook input.\n');
     process.exit(2);
   }
+
+  if (typeof command !== 'string') {
+    process.stderr.write('BLOCKED by pre-publish-guard: tool_input.command must be a string.\n');
+    process.exit(2);
+  }
+
+  const kind = publishKind(command);
+  if (!kind) process.exit(0);
+
+  enforceSnapshot(kind);
+
+  for (const check of REQUIRED_CHECKS) {
+    try {
+      execFileSync(process.execPath, [check.file, ...check.args], {
+        cwd: ROOT,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 120_000,
+      });
+    } catch (e) {
+      const out = `${e.stdout || ''}${e.stderr || ''}`.trim();
+      process.stderr.write(
+        `BLOCKED by pre-publish-guard: ${check.file} is failing.\n\n` +
+          out +
+          '\n\nThis repository is public and is read as evidence of how I work.\n' +
+          'Fix the findings above, then publish. If a finding is a false positive,\n' +
+          'fix the check rather than working around it, and keep its mutation test green.\n',
+      );
+      process.exit(2);
+    }
+  }
+  process.exit(0);
 });

@@ -38,9 +38,9 @@
       "(critical = latest date), so the same word meant 'floor' in one row and",
       "'ceiling' in the next. Replaced by three unambiguous levels."
     ],
-    "minimum": "Below this the loop is FAILED. Not a soft target. Used only when direction = higher_better.",
+    "minimum": "Lowest acceptable completion boundary. Below this the loop is FAILED. Used only when direction = higher_better.",
     "maximum": "Above this the loop is FAILED. Used only when direction = lower_better.",
-    "target": "The planned outcome. Loop is COMPLETE at this level.",
+    "target": "The planned outcome. A result between minimum and target closes as below_target and is escalated; it is not left running indefinitely.",
     "stretch": "Better than planned. Never a reason to extend the timeline.",
     "direction": [
       "Every threshold declares its direction, because the v1.0 inversion came back.",
@@ -73,12 +73,22 @@
         "single most serious defect this revision fixes."
       ],
       "deliverables": [
-        "Documented lawful basis per processing purpose (GDPR Art. 6), separately for: (a) internal transaction-data query, (b) profile enrichment, (c) marketing/recruitment outreach, (d) interview recording.",
+        "Documented lawful basis per processing purpose (GDPR Art. 6), separately for: (a) internal transaction-data query, (b) profile enrichment, (c) marketing/recruitment outreach, (d) public-source contact collection, (e) interview recording.",
         "Written confirmation that AML/KYC identity data is NOT reused for recruitment (purpose limitation, GDPR Art. 5(1)(b) + AML law).",
         "DPIA screening decision (required / not required) with rationale.",
         "Retention period + deletion procedure for research data.",
         "Approved outreach and consent wording (LT/EN), approved incentive amounts.",
-        "Approved list of external sources that may lawfully be scraped/contacted."
+        "Approved list of external sources that may lawfully be scraped/contacted.",
+        "Written confirmation that every planned purpose is permitted under its stated conditions. If any purpose is NOT PERMITTED, the affected agents are removed or replaced before G1 closes."
+      ],
+      "evidence_keys": [
+        "lawful_basis_per_purpose",
+        "kyc_aml_reuse_decision",
+        "dpia_screening",
+        "retention_and_deletion",
+        "approved_outreach_text",
+        "permitted_external_sources",
+        "all_planned_purposes_permitted"
       ],
       "blocks_agents": [
         "loop_a.find_contacts",
@@ -91,6 +101,7 @@
         "loop_d.analyze_cohort_profile",
         "loop_e.synthesize_all_outputs",
         "loop_e.create_persona",
+        "loop_e.generate_workflow_checklist",
         "loop_e.draft_pilot_brief"
       ],
       "$blocks_agents_comment": [
@@ -102,7 +113,8 @@
         "touching a natural person's data, in Loop-E as anywhere else."
       ],
       "blocks_loops": ["loop_a", "loop_d", "loop_e"],
-      "on_miss": "Loops A and D do not start. Loop-E and the CEO decision slip day-for-day. There is no 'proceed pending approval' path."
+      "on_miss": "Loops A and D do not start. Loop-E and the CEO decision slip day-for-day. There is no 'proceed pending approval' path.",
+      "close_condition": "All five purpose decisions are written, and every agent still present in this graph is permitted under those decisions. A denial requires revising the graph; closing G1 never converts NOT PERMITTED into permission."
     },
     "G2": {
       "name": "pilot_scope_sign_off",
@@ -115,6 +127,7 @@
         "Named approver + timestamp from legal@paysera or compliance@paysera.",
         "Explicit list of constraints that remain OPEN, to be carried into the brief as open risks."
       ],
+      "evidence_keys": ["signed_pilot_legal_checklist", "named_approver", "open_constraints_recorded"],
       "blocks_agents": [
         "loop_e.synthesize_all_outputs",
         "loop_e.create_persona",
@@ -146,6 +159,7 @@
         "Legal review recorded: no untagged claims, no unapproved capability described as existing, G2 open items present on page 1.",
         "Named reviewer + date for each. 'Reviewed' without a name is not a review."
       ],
+      "evidence_keys": ["cto_review", "legal_review"],
       "blocks_agents": [],
       "blocks_loops": [],
       "blocks": ["ceo_decision"],
@@ -155,9 +169,10 @@
 
   "data_classes": {
     "none": "No personal data. Internal policy documents, own devices, synthetic or licensed sample data.",
+    "internal_business_contact": "Work contact details of named Legal/DPO/Compliance reviewers used only by Loop-B to create G1/G2; never research-subject or customer data.",
     "public_personal": "Personal data from public sources (marketplace seller handles, forum posts). Requires G1.",
     "customer_personal": "Paysera customer data from production systems. Requires G1.",
-    "customer_special": "AML/KYC, identity-verification and payment-dispute records. Requires G1 AND an explicit purpose-limitation carve-out; default is NOT AVAILABLE for product research."
+    "customer_special": "AML/KYC, identity-verification and payment-dispute records, including derived eligibility decisions. Forbidden in this research graph; G1 does not waive the prohibition."
   },
 
   "loops": {
@@ -185,6 +200,9 @@
         "theme_saturation":      { "direction": "binary", "definition": "No new themes appeared in the last 3 consecutive interviews.", "required_for_target": true,
           "$comment": "Tracked in exit-conditions.json since v2.0 but never defined here, so nothing constrained it. Not a count: it is a stopping condition on the interview series." }
       },
+      "binary_requirements": {
+        "recording_consent_before_recording": "MUST. Recording consent is captured before any interview is recorded or transcribed."
+      },
       "incentive_eur": 20,
       "outputs": [
         "graph/output/loop-a/contacts.csv",
@@ -203,9 +221,9 @@
       "depends_on_loops": [],
       "agents": [
         { "id": "extract_compliance_docs",     "start_day": 1,  "end_day": 3,  "data_class": "none", "depends_on": [] },
-        { "id": "legal_basis_review",          "start_day": 3,  "end_day": 6,  "data_class": "none", "depends_on": ["extract_compliance_docs"], "closes_gate": "G1" },
-        { "id": "conduct_legal_consultation",  "start_day": 4,  "end_day": 10, "data_class": "none", "depends_on": ["extract_compliance_docs"] },
-        { "id": "map_to_pilot_scope",          "start_day": 11, "end_day": 15, "data_class": "none", "depends_on": ["conduct_legal_consultation"], "closes_gate": "G2" }
+        { "id": "legal_basis_review",          "start_day": 3,  "end_day": 6,  "data_class": "internal_business_contact", "depends_on": ["extract_compliance_docs"], "closes_gate": "G1" },
+        { "id": "conduct_legal_consultation",  "start_day": 4,  "end_day": 10, "data_class": "internal_business_contact", "depends_on": ["extract_compliance_docs"] },
+        { "id": "map_to_pilot_scope",          "start_day": 11, "end_day": 15, "data_class": "internal_business_contact", "depends_on": ["conduct_legal_consultation"], "closes_gate": "G2" }
       ],
       "thresholds": {
         "compliance_categories_covered": { "direction": "higher_better", "minimum": 3, "target": 5, "stretch": 5 },
@@ -262,6 +280,10 @@
         "prompt_version_selected": { "direction": "binary", "definition": "One prompt version is recommended, with the numbers and the sample-size caveat behind the recommendation.",
           "$comment": "Present in the YAML exit conditions but in neither JSON file, which gave Loop-C three different metric sets across three documents." }
       },
+      "binary_requirements": {
+        "blind_review": "MUST. Outputs are reviewed without revealing which prompt version produced them.",
+        "ground_truth_before_run": "MUST. Human ground truth is recorded before the AI workflow runs."
+      },
       "outputs": [
         "graph/output/loop-c/photos/",
         "graph/output/loop-c/photo_index.csv",
@@ -288,8 +310,13 @@
         "eligible_sellers":   { "direction": "higher_better", "minimum": 20, "target": 50, "stretch": 100 },
         "profiles_enriched":  { "direction": "higher_better", "minimum": 12, "target": 20, "stretch": 20 },
         "cohort_confirmed":   { "direction": "higher_better", "minimum": 4,  "target": 5,  "stretch": 7 },
-        "cohort_profile_documented": { "direction": "binary", "definition": "Cohort composition and categories documented, with the n=5 qualitative-sample caveat attached to every average.",
+        "cohort_profile_documented": { "direction": "binary", "definition": "Composition and categories documented, with the actual-n qualitative-sample caveat on every average.",
           "$comment": "Present in the YAML exit conditions but in neither JSON file." }
+      },
+      "binary_requirements": {
+        "no_query_before_g1": "MUST. No customer-data query runs before G1 closes.",
+        "consent_before_participation": "MUST. Consent is captured before participation or pilot use of research data.",
+        "no_kyc_aml_reuse": "MUST. AML/KYC, identity-verification and payment-dispute data, including decisions derived from them, are not used for recruitment."
       },
       "incentive_eur": 25,
       "$incentive_comment": "One incentive value for the whole cohort. v1.0 escalation doubled the incentive mid-recruitment (20→40, 25→50). Changing price mid-study biases the sample and treats late responders differently; any change now requires re-approval under G1. Escalate by adding channels and time, not money.",
@@ -383,9 +410,16 @@
       "requirement recorded it. The graph obtained permission to hold personal data",
       "on a promise to delete it, and contained no node that kept the promise.",
       "",
+      "The global control below now survives the P30 preparation graph: G1 assigns",
+      "its owner and due date, and exit-conditions keeps it open until evidence exists.",
+      "",
       "The period and the owner are [TBD] because G1 has not run. Putting a number",
       "here would be inventing the answer to the question G1 exists to ask."
     ],
+    "control_id": "research_data_deletion",
+    "assigned_by_gate": "G1",
+    "owner_source": "G1 deletion_owner",
+    "due_source": "prep_start_date + G1 retention_days",
     "retention_days": "[TBD — G1, loop_b.legal_basis_review]",
     "deletion_owner": "[TBD — G1, loop_b.legal_basis_review]",
     "deletion_due": "[TBD — derived from prep_start_date + retention_days once both are known]",
@@ -467,8 +501,9 @@
     "recommendation_score": {
       "definition": "Mean of 'How likely are you to recommend this to another seller?' on a 0–10 scale.",
       "direction": "higher_better",
+      "minimum": 7,
       "target": 8,
-      "$comment": "v1.0 called this 'NPS ≥ 7/10'. NPS is a −100..+100 promoter-minus-detractor figure, not an x/10 score, and it is statistically meaningless at n=5. Renamed and rescaled."
+      "$comment": "v1.0 called this 'NPS ≥ 7/10'. NPS is a −100..+100 promoter-minus-detractor figure, not an x/10 score, and it is statistically meaningless in a small cohort. Renamed and rescaled."
     },
     "listing_time_minutes": {
       "definition": "First photo upload to published listing.",

@@ -25,9 +25,10 @@ read back. See [`AUDIT-graph-2026-08-16.md`](AUDIT-graph-2026-08-16.md).
 ## Before any commit that touches `graph/`
 
 ```bash
-node tools/validate-graph.mjs             # must exit 0
+node tools/validate-graph.mjs --strict    # must exit 0; warnings block publication
 node tools/test-validator.mjs             # proves the checks still detect the v1.0 defects
 node tools/test-implementation-checks.mjs # proves each check can still be made to fail
+node tools/test-pre-publish-guard.mjs     # proves command detection and snapshot checks fail closed
 ```
 
 **A green validator run is not evidence that a check ran.** On 2026-08-16 an

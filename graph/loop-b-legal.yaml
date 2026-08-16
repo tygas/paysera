@@ -97,7 +97,7 @@ agents:
     type: compliance_decision
     start_day: P3
     end_day: P6
-    data_class: none
+    data_class: internal_business_contact
     depends_on: [extract_compliance_docs]
     closes_gate: G1
     critical: true
@@ -116,14 +116,12 @@ agents:
          d) Kontaktų rinkimas iš viešų šaltinių (Loop-A, `find_contacts`)
          e) Pokalbio įrašymas ir transkribavimas (Loop-A, `conduct_interviews`)
 
-      2. **Tikslo apribojimas — kritinis klausimas:**
-         Loop-D norėtų matyti tapatybės patvirtinimo statusą, AML žymas ir
-         ginčų istoriją. Šie duomenys surinkti vykdant teisinę prievolę
-         (AML/KYC), o ne produkto tyrimui.
-         KLAUSIMAS: ar juos apskritai galima naudoti kohortos atrankai?
-         NUMATYTASIS ATSAKYMAS, jei Legal nepatvirtina raštu: NE.
-         Tokiu atveju Loop-D atranka remiasi tik sandorių elgsena, be
-         KYC/AML laukų, ir tai fiksuojama filtruose.
+      2. **Tikslo apribojimas — privaloma piloto riba:**
+         Loop-D kohortos atrankai nenaudoja tapatybės patvirtinimo būsenos,
+         AML/KYC žymų, ginčų ar chargeback istorijos ir iš jų išvestų
+         tinkamumo sprendimų. Šie duomenys surinkti kitais tikslais, todėl
+         piloto atranka remiasi tik G1 patvirtintais sandorių elgsenos laukais.
+         Ši riba yra dvejetainė sąlyga, o ne atviras konsultacijos klausimas.
 
       3. **DPIA (poveikio duomenų apsaugai vertinimas):**
          Reikalingas ar ne? Sprendimas + pagrindimas raštu.
@@ -167,7 +165,8 @@ agents:
       approved_consent_text: string
       approved_incentives_eur: {interviews: 20, cohort: 25}
       permitted_external_sources: [string]
-      kyc_aml_reuse_permitted: bool
+      kyc_aml_reuse_permitted: bool (MUST be false to close G1)
+      all_planned_purposes_permitted: bool
 
     success_criteria:
       minimum: "raštiškas sprendimas visiems 5 tikslams (leista arba neleista)"
@@ -175,9 +174,11 @@ agents:
       stretch: "papildomai — pakartotinai naudojamas tyrimų duomenų šablonas kitiems produktams"
 
     gate_effect: |
-      G1 UŽDAROMAS: Loop-A ir Loop-D gali startuoti P7.
-      G1 NEUŽDAROMAS: Loop-A ir Loop-D NESTARTUOJA. Visas grafikas slenka
-      diena už dieną. Eskalacija — ne apėjimas.
+      G1 UŽDAROMAS tik kai visi 5 tikslai leidžiami su užfiksuotomis sąlygomis.
+      Jei bent vienas tikslas NOT PERMITTED, paveikti agentai pašalinami arba
+      pakeičiami ir grafas peržiūrimas prieš uždarant G1. Uždarymas niekada
+      nepaverčia draudimo leidimu. Kol tai nepadaryta, Loop-A ir Loop-D
+      NESTARTUOJA; grafikas slenka diena už dieną.
 
     owner: "Legal / DPO (sprendimas) + Eimantas (klausimyno paruošimas)"
 
@@ -186,7 +187,7 @@ agents:
     type: stakeholder_interview
     start_day: P4
     end_day: P10
-    data_class: none
+    data_class: internal_business_contact
     depends_on: [extract_compliance_docs]
     prompt: |
       Pokalbiai su Legal / Compliance / Fraud komandomis apie PILOTO ribas
@@ -244,7 +245,7 @@ agents:
     type: requirements_synthesis
     start_day: P11
     end_day: P15
-    data_class: none
+    data_class: internal_business_contact
     depends_on: [conduct_legal_consultation]
     closes_gate: G2
     prompt: |
@@ -305,9 +306,8 @@ agents:
     gate_effect: |
       G2 UŽDAROMAS: Loop-E gali sintezuoti brief'ą ir teigti, kad ribos
       patvirtintos.
-      G2 NEUŽDAROMAS: Loop-E vis tiek vyksta, bet brief'as pateikiamas kaip
-      „apimtis laukia teisinio patvirtinimo", o nepatvirtinti punktai
-      surašomi pirmame puslapyje. Pilotas nestartuoja.
+      G2 NEUŽDAROMAS: Loop-E lieka užblokuotas. Grafikas slenka, kol G2
+      uždaromas; atviri punktai lieka matomi, bet jie nėra vartų pakaitalas.
 
     owner: "Eimantas + Legal (bendraautorystė)"
 
@@ -338,7 +338,7 @@ exit_conditions:
       description: "Pasirašytos piloto ribos"
       due_day: P15
       substitute_allowed: false
-      note: "CEO pristatyme gali būti „atvira", bet tik jei surašyta pirmame puslapyje. Pilotui startuoti — privaloma."
+      note: "G2 privalo būti uždarytas prieš Loop-E. Atviri punktai nėra pasirašytos apimties pakaitalas."
 
   timeline:
     g1_deadline: "P6 pabaiga"
@@ -352,8 +352,8 @@ exit_conditions:
       - P6: G1 neuždarytas → Loop-A ir Loop-D NESTARTUOJA. Visas grafikas
         slenka diena už dieną. Loop-C tęsiasi (jis nenaudoja asmens duomenų).
       - P12: < 10 taisyklių → siaurinti piloto apimtį, o ne praleisti taisykles.
-      - P15: G2 neuždarytas → brief'as pažymimas „apimtis nepatvirtinta",
-        atviri punktai keliauja į pirmą puslapį, pilotas nestartuoja.
+      - P15: G2 neuždarytas → Loop-E NESTARTUOJA. Grafikas slenka iki
+        pasirašymo; atviri punktai išlieka būsimo brief'o pirmame puslapyje.
 
   # v1.0 čia buvo eilutė: „DAY 14: No sign-off → mark as pending, proceed with
   # Loop-E draft (pending final legal review)". Ji pašalinta. Reguliuojamoje
