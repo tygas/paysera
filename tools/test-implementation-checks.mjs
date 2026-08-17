@@ -549,6 +549,14 @@ const CASES = [
       o.pilot.category = 'used_electronics';
     }),
   },
+  {
+    id: 'F58',
+    what: 'an invalid YAML double-quoted scalar with an unescaped inner quote',
+    expect: /Invalid YAML scalar: double-quoted scalar contains 3 unescaped quote characters/,
+    mutate: (d) => editText(join(d, 'graph/loop-e-synthesis.yaml'),
+      "      minimum: '1 persona su žymomis ir „ko nežinome“ skyriumi'",
+      '      minimum: "1 persona su žymomis ir „ko nežinome" skyriumi"'),
+  },
 ];
 
 console.log('\n  mutation tests — checks added 2026-08-16\n');

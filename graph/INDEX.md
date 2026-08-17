@@ -24,7 +24,7 @@ build if a day, an agent name, a threshold or a gate drifts between documents.
 
 ## 2. Execution model
 
-### 2.1 Two gates, not five parallel loops
+### 2.1 Three gates, not five parallel loops
 
 Version 1.0 stated **"Dependencies: None between loops"** and ran all four data
 loops from P1. That was the most serious defect in the graph: Loop-D queried

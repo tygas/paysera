@@ -82,7 +82,16 @@ try {
   if (historical.status !== 1)
     throw new Error(`historical defect fixture returned exit ${historical.status}, expected 1\n${historical.stdout}${historical.stderr}`);
 
-  const report = JSON.parse(historical.stdout);
+  let report;
+  try {
+    report = JSON.parse(historical.stdout);
+  } catch (e) {
+    const position = Number(e.message.match(/position (\d+)/)?.[1]);
+    const context = Number.isInteger(position)
+      ? historical.stdout.slice(Math.max(0, position - 120), position + 120)
+      : historical.stdout.slice(0, 500);
+    throw new Error(`validator returned invalid JSON: ${e.message}\nContext: ${JSON.stringify(context)}`);
+  }
   const counts = {};
   for (const f of report.findings) counts[f.check] = (counts[f.check] || 0) + 1;
 

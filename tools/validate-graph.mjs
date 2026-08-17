@@ -42,7 +42,7 @@
  * `.claude/skills/pre-publish-audit/SKILL.md` is the ceiling.
  */
 
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -149,12 +149,34 @@ function readLoopYaml(path) {
   const top = {};
   const agents = [];
   const duplicateAgentFields = [];
+  const syntaxErrors = [];
   let current = null;
   let inAgents = false;
+  let blockScalarIndent = null;
 
   src.split(/\r?\n/).forEach((raw, i) => {
     const lineNo = i + 1;
     if (/^\s*#/.test(raw) || raw.trim() === '' || raw.trim() === '---') return;
+
+    const indent = raw.match(/^\s*/)[0].length;
+    if (blockScalarIndent !== null) {
+      if (indent > blockScalarIndent) return;
+      blockScalarIndent = null;
+    }
+    if (/^\s*(?:-\s+)?[a-z_]+:\s*[|>]\s*$/.test(raw)) {
+      blockScalarIndent = indent;
+      return;
+    }
+
+    // The purpose-built reader below deliberately understands only the fields
+    // this validator compares. It must still fail closed on malformed quoted
+    // scalars instead of silently treating invalid YAML as valid input.
+    const scalarValue = raw.match(/^\s*(?:-\s+)?[a-z_]+:\s*(.+?)\s*$/)?.[1];
+    if (scalarValue?.startsWith('"')) {
+      const unescapedQuotes = [...scalarValue.matchAll(/(?<!\\)"/g)].length;
+      if (unescapedQuotes !== 2)
+        syntaxErrors.push({ line: lineNo, message: `double-quoted scalar contains ${unescapedQuotes} unescaped quote characters` });
+    }
 
     if (/^agents:\s*$/.test(raw)) {
       inAgents = true;
@@ -268,6 +290,7 @@ function readLoopYaml(path) {
     binaryRequirements,
     duplicateAgentFields,
     duplicateMetrics,
+    syntaxErrors,
     path,
   };
 }
@@ -503,6 +526,10 @@ if (run('C1')) {
 // DAY 15 or 16, after the loop that depended on them had already started.
 // ===========================================================================
 if (run('C2')) {
+  for (const [loopId, yaml] of Object.entries(loopYaml)) {
+    for (const issue of yaml.syntaxErrors)
+      error('C2', `graph/${LOOP_FILES[loopId]}`, issue.line, `Invalid YAML scalar: ${issue.message}`);
+  }
   const expectedLoopIds = Object.keys(LOOP_FILES);
   const planLoopIds = Object.keys(plan.loops || {});
   for (const loopId of expectedLoopIds) {
@@ -1806,7 +1833,11 @@ const blockingFindings = strict ? findings : errors;
 const executedChecks = only ? [only.toUpperCase()] : [...CHECK_IDS];
 
 if (asJson) {
-  console.log(JSON.stringify({ executed_checks: executedChecks, strict, errors: errors.length, warnings: warns.length, findings, exemptions }, null, 2));
+  // stdout is a pipe in the mutation/regression suites. `console.log()` plus
+  // immediate `process.exit()` can drop buffered output (observed at 64 KiB),
+  // turning a valid large report into truncated JSON. A synchronous fd write
+  // makes the machine-readable contract atomic from the caller's perspective.
+  writeFileSync(1, `${JSON.stringify({ executed_checks: executedChecks, strict, errors: errors.length, warnings: warns.length, findings, exemptions }, null, 2)}\n`);
   process.exit(blockingFindings.length ? 1 : 0);
 }
 

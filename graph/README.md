@@ -29,7 +29,7 @@ v1.0 versijoje „DAY 30" viename dokumente reiškė „pilotas prasideda", o ki
 
 ## Vartai (gates)
 
-Šiame grafe yra du vartai. Jie nėra etapai — jie yra sąlygos, be kurių
+Šiame grafe yra trys vartai. Jie nėra etapai — jie yra sąlygos, be kurių
 konkretūs agentai neveikia.
 
 ### G1 — teisinis pagrindas asmens duomenims · uždaromas **P6 pabaigoje**

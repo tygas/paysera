@@ -21,16 +21,12 @@
 - Exact gate evidence-key validation for G1, G2, and G3.
 - Runtime reconciliation of loop completion, below-target completion, failure states, metrics, and binary requirements.
 - `tools/test-pre-publish-guard.mjs` for command-detection, fail-closed, full-suite, and snapshot-integrity testing.
-- Expanded adversarial mutation coverage from 16 cases to 57 cases.
+- Expanded adversarial mutation coverage from 16 cases to 58 cases.
 
 ### Verification
 
 - `node tools/validate-graph.mjs --strict` passes.
 - `node tools/test-validator.mjs` passes and reports 413 findings against the historical pre-audit graph.
-- `node tools/test-implementation-checks.mjs` detects all 57 injected defects.
+- `node tools/test-implementation-checks.mjs` detects all 58 injected defects.
 - `node tools/test-pre-publish-guard.mjs` passes all guard scenarios.
 - JavaScript syntax checks and `git diff --check` pass.
-
-### Verification environment note
-
-OMX architect-role verification was unavailable because `omx ralplan preflight --json` returned `unsupported_documented_leader_proof`. No architect approval was inferred or fabricated; repository validation and adversarial tests completed successfully.

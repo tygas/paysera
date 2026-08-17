@@ -52,10 +52,10 @@ in `Part2.md`.
 ### AI plans — start dates
 
 | Tool | In use since | Purpose |
-|---|---|---|
-| ChatGPT Pro/Max | early 2025 | Multi-agent orchestration, code review, market analysis (with OMX) |
-| Claude Team | summer 2026 | Primary tool: development, architecture, skill authoring |
-| OpenCode Zen + usage-based API | summer 2026 | Evaluating new models, routing simple tasks to cheaper ones, small API experiments |
+|---|--------------|---|
+| ChatGPT Pro/Max | early 2025   | Multi-agent orchestration, code review, market analysis (with OMX) |
+| Claude Team | spring 2026  | Primary tool: development, architecture, skill authoring |
+| OpenCode Zen + usage-based API | summer 2026  | Evaluating new models, routing simple tasks to cheaper ones, small API experiments |
 
 Roughly 1.5 years of paid AI tooling overall; Claude Team Pro for about three months.
 

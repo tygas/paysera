@@ -210,7 +210,7 @@ agents:
         derived_from_cohort: integer
 
     success_criteria:
-      minimum: "1 persona su žymomis ir „ko nežinome" skyriumi"
+      minimum: '1 persona su žymomis ir „ko nežinome“ skyriumi'
       target: "1 persona + atitikimo kohortai patikra"
       stretch: "2–3 personos"
 
