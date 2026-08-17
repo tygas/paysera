@@ -25,6 +25,7 @@
  *   node tools/validate-graph.mjs            # all checks
  *   node tools/validate-graph.mjs --only=C4  # one check
  *   node tools/validate-graph.mjs --json     # machine-readable
+ *   node tools/validate-graph.mjs --strict   # warnings also block publishing
  *
  * EXIT CODES
  *   0  clean
@@ -41,7 +42,8 @@
  * `.claude/skills/pre-publish-audit/SKILL.md` is the ceiling.
  */
 
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -51,6 +53,21 @@ const GRAPH = join(ROOT, 'graph');
 const args = process.argv.slice(2);
 const only = (args.find((a) => a.startsWith('--only=')) || '').split('=')[1] || null;
 const asJson = args.includes('--json');
+const strict = args.includes('--strict');
+const CHECK_IDS = new Set(['C1', 'C2', 'C3', 'C4', 'C5', 'S1', 'S2']);
+const fatal = (message) => {
+  if (asJson) console.log(JSON.stringify({ fatal: message, findings: [], exemptions: [] }, null, 2));
+  else console.error(`FATAL: ${message}`);
+  process.exit(2);
+};
+
+const unknownArgs = args.filter((a) => a !== '--json' && a !== '--strict' && !a.startsWith('--only='));
+if (unknownArgs.length || (only && !CHECK_IDS.has(only.toUpperCase()))) {
+  const message = unknownArgs.length
+    ? `unknown argument(s): ${unknownArgs.join(', ')}`
+    : `unknown check in --only: ${only}`;
+  fatal(`${message}. Valid checks: ${[...CHECK_IDS].join(', ')}`);
+}
 
 const findings = [];
 const exemptions = [];
@@ -58,29 +75,29 @@ const exemptions = [];
 const rel = (p) => relative(ROOT, p).split(sep).join('/');
 
 // ---------------------------------------------------------------------------
-// Exemptions.
+// Centrally reviewed exemptions.
 //
 // A document *about* defects has to quote them. This audit report reproduces
 // the Indonesian phrase and the Cyrillic character verbatim — without them the
 // finding cannot be documented at all.
 //
-// So exemptions exist, but on three conditions, because a silent exemption is
-// just a disabled check:
-//   1. Declared in the file itself, where a reader will see it.
-//   2. Scoped to one check.
-//   3. Carrying a reason. No reason, no exemption.
-// Every exemption is printed in the summary, so they cannot accumulate unseen.
-//
-//   <!-- validator:allow-file C5 — reason goes here -->
+// A marker inside a checked file must never be able to disable its own check.
+// Exemptions therefore live here, are exact file/check pairs, and are always
+// printed in the report. Adding one is a validator-code review, not a content
+// edit that silently turns off enforcement.
 // ---------------------------------------------------------------------------
 const exemptCache = new Map();
+const FILE_EXEMPTIONS = new Map([
+  ['AUDIT-graph-2026-08-16.md:C5',
+    'This report quotes the exact language artifact it documents; exemption is limited to C5 in this historical audit.'],
+]);
 function exemptChecks(absPath) {
   const key = rel(absPath);
   if (exemptCache.has(key)) return exemptCache.get(key);
-  const src = read(absPath) || '';
   const map = new Map();
-  for (const m of src.matchAll(/validator:allow-file\s+([A-Z]\d)\s*[—:-]\s*(.+?)\s*(?:-->|\*\/|$)/gm)) {
-    map.set(m[1], m[2].trim());
+  for (const [pair, reason] of FILE_EXEMPTIONS) {
+    const separator = pair.lastIndexOf(':');
+    if (pair.slice(0, separator) === key) map.set(pair.slice(separator + 1), reason);
   }
   exemptCache.set(key, map);
   return map;
@@ -131,12 +148,35 @@ function readLoopYaml(path) {
   if (src === null) return null;
   const top = {};
   const agents = [];
+  const duplicateAgentFields = [];
+  const syntaxErrors = [];
   let current = null;
   let inAgents = false;
+  let blockScalarIndent = null;
 
   src.split(/\r?\n/).forEach((raw, i) => {
     const lineNo = i + 1;
     if (/^\s*#/.test(raw) || raw.trim() === '' || raw.trim() === '---') return;
+
+    const indent = raw.match(/^\s*/)[0].length;
+    if (blockScalarIndent !== null) {
+      if (indent > blockScalarIndent) return;
+      blockScalarIndent = null;
+    }
+    if (/^\s*(?:-\s+)?[a-z_]+:\s*[|>]\s*$/.test(raw)) {
+      blockScalarIndent = indent;
+      return;
+    }
+
+    // The purpose-built reader below deliberately understands only the fields
+    // this validator compares. It must still fail closed on malformed quoted
+    // scalars instead of silently treating invalid YAML as valid input.
+    const scalarValue = raw.match(/^\s*(?:-\s+)?[a-z_]+:\s*(.+?)\s*$/)?.[1];
+    if (scalarValue?.startsWith('"')) {
+      const unescapedQuotes = [...scalarValue.matchAll(/(?<!\\)"/g)].length;
+      if (unescapedQuotes !== 2)
+        syntaxErrors.push({ line: lineNo, message: `double-quoted scalar contains ${unescapedQuotes} unescaped quote characters` });
+    }
 
     if (/^agents:\s*$/.test(raw)) {
       inAgents = true;
@@ -160,16 +200,104 @@ function readLoopYaml(path) {
     if (!current) return;
     const kv = raw.match(/^\s{4}([a-z_]+):\s*(.*)$/);
     if (kv && kv[2] !== '' && !kv[2].startsWith('|') && !kv[2].startsWith('>')) {
-      if (!(kv[1] in current)) current[kv[1]] = kv[2].trim();
+      if (kv[1] in current) duplicateAgentFields.push({ agent: current.name, field: kv[1], line: lineNo });
+      else current[kv[1]] = kv[2].trim();
     }
   });
 
-  return { top, agents, path };
+  const exitMetrics = {};
+  const duplicateMetrics = [];
+  const binaryRequirements = [];
+  let inExit = false;
+  let inCompletion = false;
+  let inBinary = false;
+  let metric = null;
+  let binaryRequirement = null;
+
+  const scalar = (value) => {
+    const s = value.trim();
+    if (/^-?\d+(?:\.\d+)?$/.test(s)) return Number(s);
+    if (s === 'true') return true;
+    if (s === 'false') return false;
+    if (s === 'null') return null;
+    return s.replace(/^["']|["']$/g, '');
+  };
+
+  src.split(/\r?\n/).forEach((raw, i) => {
+    if (/^exit_conditions:\s*$/.test(raw)) {
+      inExit = true;
+      return;
+    }
+    if (inExit && /^[a-z_]+:/.test(raw)) {
+      inExit = false;
+      inCompletion = false;
+      inBinary = false;
+      metric = null;
+      binaryRequirement = null;
+    }
+    if (!inExit) return;
+
+    if (/^\s{2}completion:\s*$/.test(raw)) {
+      inCompletion = true;
+      inBinary = false;
+      metric = null;
+      binaryRequirement = null;
+      return;
+    }
+    if (/^\s{2}binary_requirements:\s*$/.test(raw)) {
+      inCompletion = false;
+      inBinary = true;
+      metric = null;
+      binaryRequirement = null;
+      return;
+    }
+    if (/^\s{2}[a-z_]+:\s*/.test(raw)) {
+      inCompletion = false;
+      inBinary = false;
+      metric = null;
+      binaryRequirement = null;
+      return;
+    }
+
+    if (inCompletion) {
+      const start = raw.match(/^\s{4}-\s+metric:\s*(\S+)/);
+      if (start) {
+        if (exitMetrics[start[1]]) duplicateMetrics.push({ metric: start[1], line: i + 1 });
+        metric = exitMetrics[start[1]] ||= { _line: i + 1 };
+        return;
+      }
+      const kv = raw.match(/^\s{6}([a-z_]+):\s*(.+)$/);
+      if (metric && kv && !kv[2].startsWith('|') && !kv[2].startsWith('>')) {
+        metric[kv[1]] = scalar(kv[2]);
+      }
+    } else if (inBinary) {
+      const item = raw.match(/^\s{4}-\s+id:\s*(\S+)/);
+      if (item) {
+        binaryRequirement = { id: item[1], _line: i + 1 };
+        binaryRequirements.push(binaryRequirement);
+        return;
+      }
+      const kv = raw.match(/^\s{6}([a-z_]+):\s*(.+)$/);
+      if (binaryRequirement && kv && !kv[2].startsWith('|') && !kv[2].startsWith('>'))
+        binaryRequirement[kv[1]] = scalar(kv[2]);
+    }
+  });
+
+  return {
+    top,
+    agents,
+    exitMetrics,
+    binaryRequirements,
+    duplicateAgentFields,
+    duplicateMetrics,
+    syntaxErrors,
+    path,
+  };
 }
 
 const dayNum = (v) => {
   if (v === undefined || v === null) return null;
-  const m = String(v).match(/^P?(\d+)/);
+  const m = String(v).trim().match(/^P?(\d+)$/);
   return m ? Number(m[1]) : null;
 };
 
@@ -201,8 +329,31 @@ let plan;
 try {
   plan = JSON.parse(read(planPath));
 } catch (e) {
-  console.error(`FATAL: cannot read/parse ${rel(planPath)} — ${e.message}`);
-  process.exit(2);
+  fatal(`cannot read/parse ${rel(planPath)} — ${e.message}`);
+}
+
+const requiredPlanObjects = [
+  'pilot', 'gates', 'data_classes', 'loops', 'market_scope', 'claim_policy',
+  'measurement_definitions', 'data_retention',
+];
+const missingPlanObjects = requiredPlanObjects.filter(
+  (key) => !plan || typeof plan[key] !== 'object' || plan[key] === null || Array.isArray(plan[key]),
+);
+if (missingPlanObjects.length) {
+  fatal(`graph/plan.json is missing required object(s): ${missingPlanObjects.join(', ')}`);
+}
+if (!Array.isArray(plan.milestones)) {
+  fatal('graph/plan.json must define milestones as an array');
+}
+
+const exitConditionsPath = join(GRAPH, 'exit-conditions.json');
+let exitConditions;
+try {
+  exitConditions = JSON.parse(read(exitConditionsPath));
+  if (!exitConditions || typeof exitConditions !== 'object' || Array.isArray(exitConditions))
+    throw new Error('top-level value must be an object');
+} catch (e) {
+  fatal(`cannot read/parse ${rel(exitConditionsPath)}: ${e.message}`);
 }
 
 const LOOP_FILES = {
@@ -212,12 +363,16 @@ const LOOP_FILES = {
   loop_d: 'loop-d-repeat-sellers.yaml',
   loop_e: 'loop-e-synthesis.yaml',
 };
+const REQUIRED_GATE_EVIDENCE = {
+  G1: ['lawful_basis_per_purpose', 'kyc_aml_reuse_decision', 'dpia_screening', 'retention_and_deletion', 'approved_outreach_text', 'permitted_external_sources', 'all_planned_purposes_permitted'],
+  G2: ['signed_pilot_legal_checklist', 'named_approver', 'open_constraints_recorded'],
+  G3: ['cto_review', 'legal_review'],
+};
 
 const loopYaml = {};
 for (const [id, file] of Object.entries(LOOP_FILES)) {
   const parsed = readLoopYaml(join(GRAPH, file));
-  if (!parsed) error('C2', file, 0, 'Loop file missing', `plan.json defines ${id}`);
-  else loopYaml[id] = parsed;
+  if (parsed) loopYaml[id] = parsed;
 }
 
 const run = (id) => !only || only.toUpperCase() === id;
@@ -236,12 +391,23 @@ const run = (id) => !only || only.toUpperCase() === id;
 // ===========================================================================
 if (run('C1')) {
   const gates = plan.gates || {};
+  const requiresLawfulBasis = new Set(['public_personal', 'customer_personal', 'customer_special']);
 
   for (const [loopId, loop] of Object.entries(plan.loops || {})) {
     const file = LOOP_FILES[loopId] || loopId;
 
     for (const agent of loop.agents || []) {
-      const touchesPeople = agent.data_class && agent.data_class !== 'none';
+      if (agent.data_class === 'customer_special') {
+        error('C1', 'graph/plan.json', 0,
+          `Agent ${loopId}.${agent.id} uses forbidden customer_special data`,
+          'This graph forbids AML/KYC, identity-verification, dispute data, and decisions derived from them for recruitment. G1 cannot waive that binary requirement.');
+      }
+      if (agent.data_class === 'internal_business_contact' && loopId !== 'loop_b') {
+        error('C1', 'graph/plan.json', 0,
+          `Agent ${loopId}.${agent.id} uses internal_business_contact outside the gate-owner legal loop`,
+          'This narrow class exists only so Legal/DPO reviewers can create G1/G2. It is not a general way around G1.');
+      }
+      const touchesPeople = requiresLawfulBasis.has(agent.data_class);
       if (!touchesPeople) continue;
 
       const gateIds = toList(loop.gated_by);
@@ -264,7 +430,7 @@ if (run('C1')) {
       }
 
       for (const gateId of gateIds) {
-        const gate = gates[gateId];
+        const gate = Object.hasOwn(gates, gateId) ? gates[gateId] : null;
         if (!gate) {
           error('C1', 'graph/plan.json', 0, `Loop ${loopId} references unknown gate ${gateId}`);
           continue;
@@ -325,6 +491,27 @@ if (run('C1')) {
       }
     });
   }
+
+  const bypassPatterns = [
+    {
+      re: /G2\s+NEU\S*DAROMAS[\s\S]{0,200}Loop-E\s+vis\s+tiek/iu,
+      message: 'G2 text says Loop-E proceeds while the gate is open',
+    },
+    {
+      re: /G2\s+u\S*darytas\s+arba\s+atviri/iu,
+      message: 'Loop-E accepts open items as a substitute for closing G2',
+    },
+  ];
+  for (const file of Object.values(LOOP_FILES)) {
+    const src = read(join(GRAPH, file)) || '';
+    for (const { re, message } of bypassPatterns) {
+      const match = re.exec(src);
+      if (!match) continue;
+      const line = src.slice(0, match.index).split(/\r?\n/).length;
+      error('C1', `graph/${file}`, line, message,
+        'G2 is a blocking gate. A later date or narrower scope is allowed; continuing Loop-E is not.');
+    }
+  }
 }
 
 // ===========================================================================
@@ -339,13 +526,52 @@ if (run('C1')) {
 // DAY 15 or 16, after the loop that depended on them had already started.
 // ===========================================================================
 if (run('C2')) {
+  for (const [loopId, yaml] of Object.entries(loopYaml)) {
+    for (const issue of yaml.syntaxErrors)
+      error('C2', `graph/${LOOP_FILES[loopId]}`, issue.line, `Invalid YAML scalar: ${issue.message}`);
+  }
+  const expectedLoopIds = Object.keys(LOOP_FILES);
+  const planLoopIds = Object.keys(plan.loops || {});
+  for (const loopId of expectedLoopIds) {
+    if (!planLoopIds.includes(loopId))
+      error('C2', 'graph/plan.json', 0, `Missing required loop "${loopId}"`);
+  }
+  for (const loopId of planLoopIds) {
+    if (!expectedLoopIds.includes(loopId))
+      error('C2', 'graph/plan.json', 0, `Loop "${loopId}" has no mapped YAML file`);
+  }
+
   for (const [loopId, loop] of Object.entries(plan.loops || {})) {
     const y = loopYaml[loopId];
-    if (!y) continue;
+    if (!LOOP_FILES[loopId]) continue;
+    if (!y) {
+      error('C2', `graph/${LOOP_FILES[loopId]}`, 0, 'Loop YAML file is missing');
+      continue;
+    }
     const file = `graph/${LOOP_FILES[loopId]}`;
+
+    const expectedYamlLoop = loopId.slice('loop_'.length).toUpperCase();
+    if ((y.top.loop || null) !== expectedYamlLoop)
+      error('C2', file, 0, `Loop id is "${y.top.loop || null}" in YAML, expected "${expectedYamlLoop}"`);
+    if ((y.top.name || null) !== (loop.name || null))
+      error('C2', file, 0, `Loop name is "${y.top.name || null}" in YAML, plan.json says "${loop.name || null}"`);
 
     const planNames = (loop.agents || []).map((a) => a.id);
     const yamlNames = y.agents.map((a) => a.name);
+
+    for (const duplicate of y.duplicateAgentFields) {
+      error('C2', file, duplicate.line,
+        `YAML agent ${duplicate.agent} declares "${duplicate.field}" more than once`,
+        'Duplicate YAML keys are parser-dependent. The validator cannot safely choose which value an executor will use.');
+    }
+    for (const duplicate of y.duplicateMetrics) {
+      error('C2', file, duplicate.line,
+        `YAML exit_conditions declares metric "${duplicate.metric}" more than once`);
+    }
+    for (const name of new Set(yamlNames)) {
+      if (yamlNames.filter((n) => n === name).length > 1)
+        error('C2', file, 0, `YAML defines agent "${name}" more than once`);
+    }
 
     for (const n of planNames)
       if (!yamlNames.includes(n))
@@ -359,17 +585,41 @@ if (run('C2')) {
       if (!ya) continue;
       const s = dayNum(ya.start_day);
       const e = dayNum(ya.end_day);
-      if (s !== null && s !== agent.start_day)
+      if (s === null)
+        error('C2', file, ya._line, `${agent.id} has no valid YAML start_day (expected P${agent.start_day})`);
+      else if (s !== agent.start_day)
         error('C2', file, ya._line, `${agent.id} start_day is P${s} in YAML, P${agent.start_day} in plan.json`);
-      if (e !== null && e !== agent.end_day)
+      if (e === null)
+        error('C2', file, ya._line, `${agent.id} has no valid YAML end_day (expected P${agent.end_day})`);
+      else if (e !== agent.end_day)
         error('C2', file, ya._line, `${agent.id} end_day is P${e} in YAML, P${agent.end_day} in plan.json`);
+
+      if ((ya.data_class || null) !== (agent.data_class || null))
+        error('C2', file, ya._line,
+          `${agent.id} data_class is "${ya.data_class || null}" in YAML, "${agent.data_class || null}" in plan.json`);
+      if (!sameSet(toList(ya.depends_on), toList(agent.depends_on)))
+        error('C2', file, ya._line,
+          `${agent.id} depends_on is [${toList(ya.depends_on).join(', ')}] in YAML, [${toList(agent.depends_on).join(', ')}] in plan.json`);
+      if ((ya.closes_gate || null) !== (agent.closes_gate || null))
+        error('C2', file, ya._line,
+          `${agent.id} closes_gate is "${ya.closes_gate || null}" in YAML, "${agent.closes_gate || null}" in plan.json`);
+
+      const yamlGates = toList(ya.requires_gate);
+      const planGates = toList(loop.gated_by);
+      if (!sameSet(yamlGates, planGates))
+        error('C2', file, ya._line,
+          `${agent.id} requires_gate is [${yamlGates.join(', ')}] in YAML, [${planGates.join(', ')}] in plan.json`);
     }
 
     const ys = dayNum(y.top.start_day);
     const ye = dayNum(y.top.end_day);
-    if (ys !== null && ys !== loop.start_day)
+    if (ys === null)
+      error('C2', file, 0, `Loop has no valid YAML start_day (expected P${loop.start_day})`);
+    else if (ys !== loop.start_day)
       error('C2', file, 0, `Loop start_day is P${ys} in YAML, P${loop.start_day} in plan.json`);
-    if (ye !== null && ye !== loop.end_day)
+    if (ye === null)
+      error('C2', file, 0, `Loop has no valid YAML end_day (expected P${loop.end_day})`);
+    else if (ye !== loop.end_day)
       error('C2', file, 0, `Loop end_day is P${ye} in YAML, P${loop.end_day} in plan.json`);
 
     const yGates = toList(y.top.gated_by);
@@ -399,14 +649,81 @@ if (run('C2')) {
     }
   }
 
-  // exit-conditions.json must mirror plan.json exactly.
-  let ec;
-  try {
-    ec = JSON.parse(read(join(GRAPH, 'exit-conditions.json')));
-  } catch (e) {
-    error('C2', 'graph/exit-conditions.json', 0, 'Unparseable JSON', e.message);
+  const interviewIncentive = plan.loops?.loop_a?.incentive_eur;
+  const cohortIncentive = plan.loops?.loop_d?.incentive_eur;
+  const incentiveCopies = [
+    {
+      file: 'loop-a-interviews.yaml',
+      expected: interviewIncentive,
+      label: 'interview outreach text',
+      re: /atsilyginame\s+(\d+)\s*EUR/gi,
+    },
+    {
+      file: 'loop-b-legal.yaml',
+      expected: interviewIncentive,
+      label: 'G1 interview incentive questionnaire',
+      re: /(\d+)\s*EUR\s+pokalbiams/gi,
+    },
+    {
+      file: 'loop-b-legal.yaml',
+      expected: interviewIncentive,
+      label: 'approved_incentives_eur.interviews',
+      re: /approved_incentives_eur:\s*\{[^}\n]*interviews:\s*(\d+)/gi,
+    },
+    {
+      file: 'loop-b-legal.yaml',
+      expected: cohortIncentive,
+      label: 'G1 cohort incentive questionnaire',
+      re: /(\d+)\s*EUR\s+kohortai/gi,
+    },
+    {
+      file: 'loop-b-legal.yaml',
+      expected: cohortIncentive,
+      label: 'approved_incentives_eur.cohort',
+      re: /approved_incentives_eur:\s*\{[^}\n]*cohort:\s*(\d+)/gi,
+    },
+    {
+      file: 'loop-d-repeat-sellers.yaml',
+      expected: cohortIncentive,
+      label: 'cohort cashback text',
+      re: /(\d+)\s*EUR\s+cashback/gi,
+    },
+    {
+      file: 'loop-d-repeat-sellers.yaml',
+      expected: cohortIncentive,
+      label: 'cohort outreach text',
+      re: /SKATINIMAS:\s*(\d+)\s*EUR/gi,
+    },
+  ];
+  for (const copy of incentiveCopies) {
+    const src = read(join(GRAPH, copy.file)) || '';
+    const matches = [...src.matchAll(copy.re)];
+    if (matches.length !== 1)
+      error('C2', `graph/${copy.file}`, 0,
+        `${copy.label} must appear exactly once; found ${matches.length}`,
+        'Removing an approved incentive copy is drift too; every executable prompt must retain the approved amount.');
+    for (const match of matches) {
+      if (Number(match[1]) !== copy.expected) {
+        const line = src.slice(0, match.index).split(/\r?\n/).length;
+        error('C2', `graph/${copy.file}`, line,
+          `${copy.label} is ${match[1]} EUR, plan.json says ${copy.expected} EUR`,
+          'All approved incentive copies must change together and be re-approved under G1.');
+      }
+    }
   }
-  if (ec) {
+
+  // exit-conditions.json must mirror plan.json exactly.
+  const ec = exitConditions;
+  {
+    for (const field of [
+      'name', 'category', 'market', 'prep_window_days', 'live_pilot_days',
+      'prep_start_date', 'live_start_date', 'status',
+    ]) {
+      if (ec.pilot?.[field] !== plan.pilot?.[field])
+        error('C2', 'graph/exit-conditions.json', 0,
+          `pilot.${field} is ${JSON.stringify(ec.pilot?.[field])}, plan.json says ${JSON.stringify(plan.pilot?.[field])}`);
+    }
+
     for (const [loopId, loop] of Object.entries(plan.loops || {})) {
       const t = ec[loopId];
       if (!t) {
@@ -422,6 +739,15 @@ if (run('C2')) {
       if (!sameSet(toList(t.depends_on_loops), toList(loop.depends_on_loops)))
         error('C2', 'graph/exit-conditions.json', 0,
           `${loopId} depends_on_loops is [${toList(t.depends_on_loops).join(', ')}], plan.json says [${toList(loop.depends_on_loops).join(', ')}]`);
+      if ((t.name || null) !== (loop.name || null))
+        error('C2', 'graph/exit-conditions.json', 0,
+          `${loopId}.name is "${t.name || null}", plan.json says "${loop.name || null}"`);
+      if ((t.incentive_eur ?? null) !== (loop.incentive_eur ?? null))
+        error('C2', 'graph/exit-conditions.json', 0,
+          `${loopId}.incentive_eur is ${JSON.stringify(t.incentive_eur)}, plan.json says ${JSON.stringify(loop.incentive_eur)}`);
+      if (!sameSet(toList(t.outputs), toList(loop.outputs)))
+        error('C2', 'graph/exit-conditions.json', 0,
+          `${loopId}.outputs drift from plan.json`);
 
       for (const agent of loop.agents || []) {
         const a = (t.agents || {})[agent.id];
@@ -451,6 +777,11 @@ if (run('C2')) {
           error('C2', 'graph/exit-conditions.json', 0,
             `${loopId}.${metric}.direction is "${m.direction}", plan.json says "${th.direction}"`,
             'Direction decides whether the fail threshold is a floor or a ceiling. The two files may not disagree about it.');
+        for (const field of ['definition', 'required_for_target']) {
+          if ((m[field] ?? null) !== (th[field] ?? null))
+            error('C2', 'graph/exit-conditions.json', 0,
+              `${loopId}.${metric}.${field} is ${JSON.stringify(m[field])}, plan.json says ${JSON.stringify(th[field])}`);
+        }
         for (const level of ['minimum', 'maximum', 'target', 'stretch']) {
           if (th[level] === undefined && m[level] === undefined) continue;
           if (m[level] !== th[level])
@@ -473,8 +804,8 @@ if (run('C2')) {
 
       // And the YAML exit_conditions block, which was never compared to anything
       // at all — the reason Loop-C had three different metric sets in three files.
-      const yamlSrc = read(join(GRAPH, LOOP_FILES[loopId])) || '';
-      const yamlMetrics = [...yamlSrc.matchAll(/^\s*-\s+metric:\s*(\S+)/gm)].map((m) => m[1]);
+      const yamlMetricMap = loopYaml[loopId]?.exitMetrics || {};
+      const yamlMetrics = Object.keys(yamlMetricMap);
       for (const metric of yamlMetrics) {
         if (!planMetrics.includes(metric))
           error('C2', `graph/${LOOP_FILES[loopId]}`, 0,
@@ -485,7 +816,196 @@ if (run('C2')) {
           error('C2', `graph/${LOOP_FILES[loopId]}`, 0,
             `plan.json defines metric "${metric}" which the YAML exit_conditions does not list`);
       }
+
+      for (const metric of planMetrics) {
+        const th = loop.thresholds[metric];
+        const ym = yamlMetricMap[metric];
+        if (!ym) continue;
+        const inferredDirection = ym.direction ||
+          (typeof ym.minimum === 'number' && ym.maximum === undefined ? 'higher_better' : null);
+        if (inferredDirection !== (th.direction || null))
+          error('C2', `graph/${LOOP_FILES[loopId]}`, ym._line,
+            `${metric}.direction is "${inferredDirection}", plan.json says "${th.direction || null}"`);
+        for (const level of ['minimum', 'maximum', 'target', 'stretch']) {
+          const planValue = th[level];
+          const yamlValue = ym[level];
+          if (typeof planValue === 'number' && yamlValue !== planValue)
+            error('C2', `graph/${LOOP_FILES[loopId]}`, ym._line,
+              `${metric}.${level} is ${yamlValue} in YAML, ${planValue} in plan.json`);
+          else if (planValue === undefined && typeof yamlValue === 'number')
+            error('C2', `graph/${LOOP_FILES[loopId]}`, ym._line,
+              `${metric}.${level} is ${yamlValue} in YAML but plan.json defines no numeric ${level}`);
+        }
+      }
+
+      const planRequirements = Object.keys(loop.binary_requirements || {}).filter((k) => !k.startsWith('$'));
+      const trackedRequirements = Object.keys(t.binary_requirements || {}).filter((k) => !k.startsWith('$'));
+      const yamlRequirements = (loopYaml[loopId]?.binaryRequirements || []).map((r) => r.id);
+      for (const id of new Set(yamlRequirements)) {
+        if (yamlRequirements.filter((candidate) => candidate === id).length > 1)
+          error('C2', `graph/${LOOP_FILES[loopId]}`, 0,
+            `YAML binary_requirements defines "${id}" more than once`);
+      }
+      for (const [source, ids] of [
+        ['exit-conditions.json', trackedRequirements],
+        ['YAML binary_requirements', yamlRequirements],
+      ]) {
+        for (const id of planRequirements) {
+          if (!ids.includes(id))
+            error('C2', source === 'exit-conditions.json' ? 'graph/exit-conditions.json' : `graph/${LOOP_FILES[loopId]}`, 0,
+              `${loopId} ${source} is missing binary requirement "${id}" from plan.json`);
+        }
+        for (const id of ids) {
+          if (!planRequirements.includes(id))
+            error('C2', source === 'exit-conditions.json' ? 'graph/exit-conditions.json' : `graph/${LOOP_FILES[loopId]}`, 0,
+              `${loopId} ${source} defines binary requirement "${id}" which plan.json does not define`);
+        }
+      }
+      for (const id of planRequirements) {
+        const tracked = t.binary_requirements?.[id];
+        const yaml = (loopYaml[loopId]?.binaryRequirements || []).find((item) => item.id === id);
+        if (tracked && tracked.substitute_allowed !== false)
+          error('C2', 'graph/exit-conditions.json', 0,
+            `${loopId}.${id}.substitute_allowed must be false`);
+        if (yaml && yaml.substitute_allowed !== false)
+          error('C2', `graph/${LOOP_FILES[loopId]}`, yaml._line,
+            `${loopId}.${id}.substitute_allowed must be false in YAML`);
+      }
     }
+
+    const trackedLoopIds = Object.keys(ec).filter((id) => /^loop_/.test(id));
+    for (const loopId of trackedLoopIds) {
+      if (!Object.hasOwn(plan.loops, loopId))
+        error('C2', 'graph/exit-conditions.json', 0,
+          `Tracks loop ${loopId} which plan.json does not define`);
+    }
+
+    for (const [loopId, loop] of Object.entries(plan.loops || {})) {
+      const trackedAgents = Object.keys(ec[loopId]?.agents || {});
+      const planAgents = (loop.agents || []).map((agent) => agent.id);
+      for (const agentId of trackedAgents) {
+        if (!planAgents.includes(agentId))
+          error('C2', 'graph/exit-conditions.json', 0,
+            `${loopId} tracks agent ${agentId} which plan.json does not define`);
+      }
+    }
+
+    const executionStatuses = new Set([
+      'not_started', 'blocked_by_gate', 'in_progress', 'complete', 'below_target', 'failed', 'cancelled_by_gate',
+    ]);
+    const startedStatuses = new Set(['in_progress', 'complete', 'below_target', 'failed']);
+    const dependencyReadyStatuses = new Set(['complete', 'below_target', 'failed']);
+    const completedLoopStatuses = new Set(['complete', 'below_target']);
+    const metricStatuses = new Set(['not_started', 'in_progress', 'met', 'below_target', 'failed']);
+    const metricOutcome = (threshold, tracked) => {
+      const direction = threshold?.direction;
+      const current = tracked?.current;
+      if (direction === 'informational') return { relevant: false, valid: true };
+      if (direction === 'binary')
+        return { relevant: true, valid: current === null || typeof current === 'boolean', accepted: current === true, target: current === true, known: typeof current === 'boolean' };
+      const valid = current === null || (typeof current === 'number' && Number.isFinite(current));
+      if (!valid || current === null) return { relevant: true, valid, accepted: false, target: false, known: false };
+      if (direction === 'higher_better')
+        return { relevant: true, valid, accepted: current >= threshold.minimum, target: threshold.target === undefined || current >= threshold.target, known: true };
+      if (direction === 'lower_better')
+        return { relevant: true, valid, accepted: current <= threshold.maximum, target: threshold.target === undefined || current <= threshold.target, known: true };
+      return { relevant: true, valid: false, accepted: false, target: false, known: false };
+    };
+    for (const [loopId, loop] of Object.entries(plan.loops || {})) {
+      const trackedLoop = ec[loopId];
+      if (!executionStatuses.has(trackedLoop?.status))
+        error('C2', 'graph/exit-conditions.json', 0,
+          `${loopId}.status is missing or invalid: ${JSON.stringify(trackedLoop?.status)}`);
+
+      for (const agent of loop.agents || []) {
+        const trackedAgent = trackedLoop?.agents?.[agent.id];
+        if (!executionStatuses.has(trackedAgent?.status))
+          error('C2', 'graph/exit-conditions.json', 0,
+            `${loopId}.${agent.id}.status is missing or invalid: ${JSON.stringify(trackedAgent?.status)}`);
+        if (startedStatuses.has(trackedAgent?.status)) {
+          for (const dependency of agent.depends_on || []) {
+            const dependencyStatus = trackedLoop?.agents?.[dependency]?.status;
+            if (dependencyStatus !== 'complete')
+              error('C2', 'graph/exit-conditions.json', 0,
+                `${loopId}.${agent.id} is ${trackedAgent.status} while dependency ${dependency} is ${dependencyStatus}`);
+          }
+        }
+      }
+
+      if (startedStatuses.has(trackedLoop?.status)) {
+        for (const dependency of toList(loop.depends_on_loops)) {
+          if (!dependencyReadyStatuses.has(ec[dependency]?.status))
+            error('C2', 'graph/exit-conditions.json', 0,
+              `${loopId} is ${trackedLoop.status} while dependency ${dependency} is ${ec[dependency]?.status}`);
+        }
+      }
+      if (completedLoopStatuses.has(trackedLoop?.status)) {
+        for (const agent of loop.agents || []) {
+          if (trackedLoop.agents?.[agent.id]?.status !== 'complete')
+            error('C2', 'graph/exit-conditions.json', 0,
+              `${loopId} is complete while agent ${agent.id} is ${trackedLoop.agents?.[agent.id]?.status}`);
+        }
+      }
+
+      const outcomes = [];
+      for (const [metric, threshold] of Object.entries(loop.thresholds || {})) {
+        if (metric.startsWith('$')) continue;
+        const trackedMetric = trackedLoop?.metrics?.[metric];
+        const outcome = metricOutcome(threshold, trackedMetric);
+        if (!outcome.valid)
+          error('C2', 'graph/exit-conditions.json', 0,
+            `${loopId}.${metric}.current has the wrong type for direction ${threshold.direction}: ${JSON.stringify(trackedMetric?.current)}`);
+        if (trackedMetric?.status !== undefined && !metricStatuses.has(trackedMetric.status))
+          error('C2', 'graph/exit-conditions.json', 0,
+            `${loopId}.${metric}.status is invalid: ${JSON.stringify(trackedMetric.status)}`);
+        if (outcome.relevant) outcomes.push({ metric, ...outcome });
+      }
+      const requirements = Object.keys(loop.binary_requirements || {}).filter((id) => !id.startsWith('$'));
+      const requirementsMet = requirements.every((id) => trackedLoop?.binary_requirements?.[id]?.met === true);
+      const requirementsFailed = requirements.some((id) => trackedLoop?.binary_requirements?.[id]?.met === false);
+      if (trackedLoop?.status === 'complete' &&
+          (!outcomes.every((outcome) => outcome.known && outcome.target) || !requirementsMet))
+        error('C2', 'graph/exit-conditions.json', 0,
+          `${loopId} is complete but its target metrics or binary requirements are not all met`);
+      if (trackedLoop?.status === 'below_target') {
+        const allAccepted = outcomes.every((outcome) => outcome.known && outcome.accepted);
+        const anyBelowTarget = outcomes.some((outcome) => !outcome.target);
+        if (!allAccepted || !anyBelowTarget || !requirementsMet)
+          error('C2', 'graph/exit-conditions.json', 0,
+            `${loopId} is below_target without complete evidence above every fail boundary and below at least one target`);
+      }
+      if (trackedLoop?.status === 'failed') {
+        const hasFailureEvidence = outcomes.some((outcome) => outcome.known && !outcome.accepted) || requirementsFailed;
+        if (!hasFailureEvidence)
+          error('C2', 'graph/exit-conditions.json', 0,
+            `${loopId} is failed but no metric crosses a fail boundary and no binary requirement is false`);
+        for (const agent of loop.agents || []) {
+          if (!['complete', 'failed'].includes(trackedLoop.agents?.[agent.id]?.status))
+            error('C2', 'graph/exit-conditions.json', 0,
+              `${loopId} is failed while agent ${agent.id} is not terminal`);
+        }
+      }
+    }
+
+    const incompleteEvidence = (value, path = '', out = []) => {
+      if (value === false || value === null || value === '') {
+        out.push(path || '<root>');
+        return out;
+      }
+      if (Array.isArray(value)) {
+        if (!value.length) out.push(path || '<root>');
+        value.forEach((child, index) => incompleteEvidence(child, `${path}[${index}]`, out));
+        return out;
+      }
+      if (!value || typeof value !== 'object') return out;
+      const entries = Object.entries(value).filter(([key]) => !key.startsWith('$') && key !== 'substitute_allowed');
+      if (!entries.length) out.push(path || '<root>');
+      for (const [key, child] of entries) {
+        const childPath = path ? `${path}.${key}` : key;
+        incompleteEvidence(child, childPath, out);
+      }
+      return out;
+    };
 
     for (const [gid, gate] of Object.entries(plan.gates || {})) {
       const g = (ec.gates || {})[gid];
@@ -496,6 +1016,9 @@ if (run('C2')) {
       if (g.closes_end_of_day !== gate.closes_end_of_day)
         error('C2', 'graph/exit-conditions.json', 0,
           `${gid} closes P${g.closes_end_of_day}, plan.json says P${gate.closes_end_of_day}`);
+      if ((g.name || null) !== (gate.name || null))
+        error('C2', 'graph/exit-conditions.json', 0,
+          `${gid}.name is "${g.name || null}", plan.json says "${gate.name || null}"`);
       const expectedOwner = gate.owner_loop && gate.satisfied_by_agent
         ? `${gate.owner_loop}.${gate.satisfied_by_agent}` : null;
       if (expectedOwner && (g.owner || null) !== expectedOwner)
@@ -507,6 +1030,34 @@ if (run('C2')) {
       if (!sameSet(toList(g.blocks), toList(gate.blocks)))
         error('C2', 'graph/exit-conditions.json', 0,
           `${gid}.blocks is [${toList(g.blocks).join(', ')}], plan.json says [${toList(gate.blocks).join(', ')}]`);
+
+      const expectedEvidence = toList(gate.evidence_keys);
+      const trackedEvidence = g.deliverables_received && typeof g.deliverables_received === 'object' && !Array.isArray(g.deliverables_received)
+        ? Object.keys(g.deliverables_received).filter((key) => !key.startsWith('$'))
+        : [];
+      if (!sameSet(expectedEvidence, trackedEvidence))
+        error('C2', 'graph/exit-conditions.json', 0,
+          `${gid}.deliverables_received keys are [${trackedEvidence.join(', ')}], plan.json requires [${expectedEvidence.join(', ')}]`,
+          'Gate evidence must identify every approved deliverable; an arbitrary true flag cannot close a gate.');
+
+      if (!['pending', 'closed'].includes(g.status))
+        error('C2', 'graph/exit-conditions.json', 0,
+          `${gid}.status is "${g.status}"; expected "pending" or "closed"`);
+      if (g.status === 'closed') {
+        if (!g.decided_by || !g.decided_at)
+          error('C2', 'graph/exit-conditions.json', 0,
+            `${gid} is closed without decided_by and decided_at`,
+            'A gate closes only through a named, timestamped written decision.');
+        if (expectedEvidence.length &&
+            (!g.deliverables_received || typeof g.deliverables_received !== 'object'))
+          error('C2', 'graph/exit-conditions.json', 0,
+            `${gid} is closed without a deliverables_received evidence object`);
+        const incomplete = incompleteEvidence(g.deliverables_received);
+        if (incomplete.length)
+          error('C2', 'graph/exit-conditions.json', 0,
+            `${gid} is closed while required evidence is incomplete`,
+            incomplete.join(', '));
+      }
 
       // ---------------------------------------------------------------------
       // THIS CHECK USED TO BE DEAD CODE.
@@ -526,7 +1077,7 @@ if (run('C2')) {
       const derived = [
         ...new Set((gate.blocks_agents || [])
           .map((ref) => String(ref).split('.')[0])
-          .filter((l) => plan.loops && plan.loops[l])),
+          .filter((l) => Object.hasOwn(plan.loops, l))),
       ];
 
       if (!sameSet(derived, toList(gate.blocks_loops)))
@@ -547,28 +1098,95 @@ if (run('C2')) {
               `${gid} is "${g.status}" but ${loopId} status is "${st}"`,
               'While a gate is open, everything it blocks must read blocked_by_gate.');
         }
+        for (const ref of gate.blocks_agents || []) {
+          const [loopId, agentId] = String(ref).split('.');
+          const st = ec[loopId]?.agents?.[agentId]?.status;
+          if (st !== 'blocked_by_gate')
+            error('C2', 'graph/exit-conditions.json', 0,
+              `${gid} is "${g.status}" but ${ref} status is "${st}"`,
+              'An open gate blocks the executable agent, not only the loop summary row.');
+        }
+        for (const milestoneId of toList(gate.blocks)) {
+          const milestone = (ec.milestones || []).find((item) => item.id === milestoneId);
+          if (milestone?.done)
+            error('C2', 'graph/exit-conditions.json', 0,
+              `${gid} is "${g.status}" but blocked milestone ${milestoneId} is marked done`);
+        }
       }
     }
 
     // Every gate in plan.json must be tracked, and no gate may be invented here.
     for (const gid of Object.keys(ec.gates || {}))
-      if (!(plan.gates || {})[gid])
+      if (!Object.hasOwn(plan.gates, gid))
         error('C2', 'graph/exit-conditions.json', 0, `Tracks gate ${gid} which plan.json does not define`);
 
     // Milestones are executable graph nodes too, not decorative prose.
-    const planMilestones = Object.fromEntries((plan.milestones || []).map((m) => [m.id, m]));
-    const trackedMilestones = Object.fromEntries((ec.milestones || []).map((m) => [m.id, m]));
-    for (const [id, milestone] of Object.entries(planMilestones)) {
-      const tracked = trackedMilestones[id];
+    const planMilestones = new Map((plan.milestones || []).map((m) => [m.id, m]));
+    const trackedMilestones = new Map((ec.milestones || []).map((m) => [m.id, m]));
+    for (const [id, milestone] of planMilestones) {
+      const tracked = trackedMilestones.get(id);
       if (!tracked)
         error('C2', 'graph/exit-conditions.json', 0, `Missing milestone ${id}`);
       else if (tracked.day !== milestone.day)
         error('C2', 'graph/exit-conditions.json', 0,
           `${id} is P${tracked.day}, plan.json says P${milestone.day}`);
     }
-    for (const id of Object.keys(trackedMilestones))
-      if (!planMilestones[id])
+    for (const id of trackedMilestones.keys())
+      if (!planMilestones.has(id))
         error('C2', 'graph/exit-conditions.json', 0, `Tracks milestone ${id} which plan.json does not define`);
+
+    // Retention may be due after P30, so it is a global control rather than a
+    // fake fixed-date agent. It must remain executable: G1 assigns the owner and
+    // due date, and the tracker cannot close without named deletion evidence.
+    const retentionPlan = plan.data_retention;
+    const retention = ec.data_retention;
+    if (!retention || typeof retention !== 'object') {
+      error('C2', 'graph/exit-conditions.json', 0, 'Missing global data_retention control');
+    } else {
+      if (retentionPlan.control_id !== 'research_data_deletion' ||
+          retention.control_id !== retentionPlan.control_id)
+        error('C2', 'graph/exit-conditions.json', 0,
+          'data_retention.control_id must be "research_data_deletion" in both files');
+      if (retentionPlan.assigned_by_gate !== 'G1' || retention.assigned_by_gate !== 'G1')
+        error('C2', 'graph/exit-conditions.json', 0,
+          'data_retention must be assigned by G1');
+      if (!['pending_g1', 'scheduled', 'complete'].includes(retention.status))
+        error('C2', 'graph/exit-conditions.json', 0,
+          `data_retention.status is invalid: ${JSON.stringify(retention.status)}`);
+      if (retention.deletion_executed?.substitute_allowed !== false)
+        error('C2', 'graph/exit-conditions.json', 0,
+          'data_retention deletion evidence must set substitute_allowed to false');
+
+      const coveredLoops = [...new Set((retentionPlan.covers || [])
+        .map((output) => String(output).match(/^graph\/output\/(loop-[a-e])\//)?.[1]?.replace('-', '_'))
+        .filter(Boolean))];
+      if (!sameSet(coveredLoops, toList(retention.covers_loops)))
+        error('C2', 'graph/exit-conditions.json', 0,
+          `data_retention.covers_loops is [${toList(retention.covers_loops).join(', ')}], plan outputs imply [${coveredLoops.join(', ')}]`);
+
+      const g1Closed = ec.gates?.G1?.status === 'closed';
+      const unresolved = (value) => value === null || value === undefined || /\[?TBD/i.test(String(value));
+      if (g1Closed && (unresolved(retention.retention_days) || unresolved(retention.deletion_owner) || unresolved(retention.deletion_due)))
+        error('C2', 'graph/exit-conditions.json', 0,
+          'G1 is closed but data_retention owner, period, or due date is still unresolved');
+      if (g1Closed && (!Number.isInteger(retention.retention_days) || retention.retention_days <= 0 ||
+          typeof retention.deletion_owner !== 'string' || !retention.deletion_owner.trim() ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(String(retention.deletion_due))))
+        error('C2', 'graph/exit-conditions.json', 0,
+          'Closed G1 requires a positive integer retention_days, named deletion_owner, and YYYY-MM-DD deletion_due');
+      if (g1Closed && retention.status === 'pending_g1')
+        error('C2', 'graph/exit-conditions.json', 0,
+          'G1 is closed but data_retention.status is still pending_g1');
+      if (retention.status === 'complete' || retention.deletion_executed?.met === true) {
+        if (retention.status !== 'complete' || retention.deletion_executed?.met !== true ||
+            unresolved(retention.deletion_executed?.executed_by) || unresolved(retention.deletion_executed?.executed_at))
+          error('C2', 'graph/exit-conditions.json', 0,
+            'data_retention can close only with executed_by and executed_at evidence');
+        else if (!/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)?$/.test(String(retention.deletion_executed.executed_at)))
+          error('C2', 'graph/exit-conditions.json', 0,
+            'data_retention.executed_at must be an ISO date or UTC timestamp');
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -676,7 +1294,9 @@ if (run('C2')) {
 if (run('C3')) {
   const excluded = (plan.market_scope?.excluded || []).map((e) => e.name);
   const adjacent = (plan.market_scope?.adjacent_not_competitors || []).map((e) => e.name);
-  const watched = [...excluded, ...adjacent];
+  // Keep the known out-of-scope set anchored even if plan.json itself is
+  // accidentally edited. A policy cannot validate its own removal.
+  const watched = [...new Set([...excluded, ...adjacent, 'OLX', 'eBay', 'Craigslist', 'Vinted'])];
 
   const JUSTIFIERS = [
     /v1\.0/i, /excluded/i, /out of scope/i, /not a (used-electronics )?(competitor|comparable)/i,
@@ -735,6 +1355,7 @@ if (run('C4')) {
     { re: /[€$]\s?\d[\d.,]*\s*(?:B|M|k|bn|mln|mlrd)\b/i, what: 'market-size claim' },
     { re: /\b\d[\d.,]*\s*(?:million|billion|mln|mlrd)\b/i, what: 'market-size claim' },
     { re: /\b\d+\s*\/\s*\d+\s+mentions\b/i,            what: 'interview frequency claim' },
+    { re: /\b\d+\.\d+\s*\/\s*\d+\b/,                  what: 'measured rating claim' },
     { re: /\bNPS\b(?!\s*is\s+a)/i,                     what: 'NPS reference' },
   ];
 
@@ -868,6 +1489,26 @@ if (run('S1')) {
     error('S1', '.gitignore', 0,
       'graph/output/ is not gitignored',
       'Loop-A transcripts and Loop-D seller profiles are personal data, and this repository is public.');
+  const negations = gi.split(/\r?\n/).filter((line) => /^!\/?graph\/output(?:\/|$)/.test(line.trim()));
+  if (negations.length)
+    error('S1', '.gitignore', 0,
+      'A later .gitignore rule makes content under graph/output/ committable',
+      negations.join('\n'));
+
+  if (existsSync(join(ROOT, '.git'))) {
+    try {
+      const tracked = execFileSync('git', ['ls-files', '--', 'graph/output'], {
+        cwd: ROOT,
+        encoding: 'utf8',
+      }).trim();
+      if (tracked)
+        error('S1', 'graph/output/', 0,
+          'Personal-data output is already tracked by git',
+          tracked);
+    } catch (e) {
+      error('S1', '.git', 0, 'Could not verify whether graph/output/ is tracked', e.message);
+    }
+  }
 }
 
 // ===========================================================================
@@ -884,16 +1525,41 @@ if (run('S1')) {
 function checkDirection(file, label, th) {
   if (!th || typeof th !== 'object') return;
   const { direction, minimum, maximum, target, stretch } = th;
-  const numeric = [minimum, maximum, target, stretch].some((v) => typeof v === 'number');
-  if (!numeric) return;
+  const values = { minimum, maximum, target, stretch };
+  const defined = Object.entries(values).filter(([, value]) => value !== undefined);
 
   if (!direction) {
-    error('S2', file, 0, `${label}: numeric threshold with no "direction"`,
+    if (!defined.length) return;
+    error('S2', file, 0, `${label}: threshold with no "direction"`,
       'Every threshold declares higher_better, lower_better, binary or informational. Without it, "minimum" is ambiguous.');
     return;
   }
 
+  if (!['higher_better', 'lower_better', 'binary', 'informational'].includes(direction)) {
+    error('S2', file, 0, `${label}: unknown direction "${direction}"`,
+      'Valid: higher_better, lower_better, binary, informational.');
+    return;
+  }
+
+  if (direction === 'binary' || direction === 'informational') {
+    for (const [level, value] of defined) {
+      if (typeof value === 'number')
+        error('S2', file, 0, `${label}: direction is ${direction} but it defines numeric "${level}"`);
+    }
+    return;
+  }
+
+  for (const [level, value] of defined) {
+    if (typeof value !== 'number')
+      error('S2', file, 0,
+        `${label}.${level} must be a number, got ${JSON.stringify(value)}`,
+        'Encoding a numeric threshold as text disables ordering and boundary checks.');
+  }
+  if (defined.some(([, value]) => typeof value !== 'number')) return;
+
   if (direction === 'higher_better') {
+    if (minimum === undefined)
+      error('S2', file, 0, `${label}: higher_better threshold has no "minimum" fail boundary`);
     if (maximum !== undefined)
       error('S2', file, 0, `${label}: direction is higher_better but it defines "maximum"`,
         'A higher-is-better metric fails at a floor. Use "minimum".');
@@ -903,6 +1569,8 @@ function checkDirection(file, label, th) {
         `${label}: minimum ${minimum} / target ${target} / stretch ${stretch} is not monotonic for higher_better`,
         'This is the inversion that made v1.0 tables mean "floor" in one row and "ceiling" in the next.');
   } else if (direction === 'lower_better') {
+    if (maximum === undefined)
+      error('S2', file, 0, `${label}: lower_better threshold has no "maximum" fail boundary`);
     if (minimum !== undefined)
       error('S2', file, 0, `${label}: direction is lower_better but it defines "minimum"`,
         'A lower-is-better metric fails at a ceiling. Use "maximum" — writing the ceiling into "minimum" is exactly the v1.0 inversion.');
@@ -911,23 +1579,53 @@ function checkDirection(file, label, th) {
       error('S2', file, 0,
         `${label}: maximum ${maximum} / target ${target} / stretch ${stretch} is not monotonic for lower_better`,
         'For lower_better the sequence must descend: maximum >= target >= stretch.');
-  } else if (direction !== 'binary' && direction !== 'informational') {
-    error('S2', file, 0, `${label}: unknown direction "${direction}"`,
-      'Valid: higher_better, lower_better, binary, informational.');
   }
 }
 
 if (run('S2')) {
+  for (const loopId of Object.keys(LOOP_FILES)) {
+    if (!Object.hasOwn(plan.loops, loopId))
+      error('S2', 'graph/plan.json', 0, `Missing required loop "${loopId}"`);
+  }
+  for (const gateId of Object.keys(REQUIRED_GATE_EVIDENCE)) {
+    if (!Object.hasOwn(plan.gates, gateId))
+      error('S2', 'graph/plan.json', 0, `Missing required gate "${gateId}"`);
+  }
+  if (plan.data_retention?.control_id !== 'research_data_deletion' ||
+      plan.data_retention?.assigned_by_gate !== 'G1' ||
+      !Array.isArray(plan.data_retention?.covers) || !plan.data_retention.covers.length ||
+      typeof plan.data_retention?.binary_requirement !== 'string')
+    error('S2', 'graph/plan.json', 0,
+      'data_retention must define the research_data_deletion control, G1 assignment, covered outputs, and a binary requirement');
   for (const [loopId, loop] of Object.entries(plan.loops || {})) {
-    const byId = Object.fromEntries((loop.agents || []).map((a) => [a.id, a]));
-    for (const agent of loop.agents || []) {
+    if (!Number.isInteger(loop.start_day) || !Number.isInteger(loop.end_day) || loop.start_day > loop.end_day)
+      error('S2', 'graph/plan.json', 0,
+        `${loopId} has invalid window ${JSON.stringify(loop.start_day)}..${JSON.stringify(loop.end_day)}`);
+    const agents = Array.isArray(loop.agents) ? loop.agents : [];
+    if (!Array.isArray(loop.agents))
+      error('S2', 'graph/plan.json', 0, `${loopId}.agents must be an array`);
+    const ids = agents.map((agent) => agent.id);
+    for (const id of new Set(ids)) {
+      if (ids.filter((candidate) => candidate === id).length > 1)
+        error('S2', 'graph/plan.json', 0, `${loopId} defines agent "${id}" more than once`);
+    }
+    const byId = new Map(agents.map((agent) => [agent.id, agent]));
+    for (const agent of agents) {
+      if (!Object.hasOwn(plan.data_classes, agent.data_class))
+        error('S2', 'graph/plan.json', 0,
+          `${loopId}.${agent.id} has missing or unknown data_class "${agent.data_class}"`);
+      if (!Number.isInteger(agent.start_day) || !Number.isInteger(agent.end_day)) {
+        error('S2', 'graph/plan.json', 0,
+          `${loopId}.${agent.id} has non-integer day values ${JSON.stringify(agent.start_day)}..${JSON.stringify(agent.end_day)}`);
+        continue;
+      }
       if (agent.start_day > agent.end_day)
         error('S2', 'graph/plan.json', 0, `${loopId}.${agent.id} starts P${agent.start_day} after it ends P${agent.end_day}`);
       if (agent.start_day < loop.start_day || agent.end_day > loop.end_day)
         error('S2', 'graph/plan.json', 0,
           `${loopId}.${agent.id} (P${agent.start_day}–P${agent.end_day}) falls outside its loop window P${loop.start_day}–P${loop.end_day}`);
       for (const dep of agent.depends_on || []) {
-        const d = byId[dep];
+        const d = byId.get(dep);
         if (!d) {
           error('S2', 'graph/plan.json', 0, `${loopId}.${agent.id} depends on unknown agent "${dep}"`);
           continue;
@@ -946,24 +1644,48 @@ if (run('S2')) {
           `${loopId} has an agent dependency cycle: ${[...path, id].join(' -> ')}`);
         return;
       }
-      if (visited.has(id) || !byId[id]) return;
+      if (visited.has(id) || !byId.has(id)) return;
       visiting.add(id);
-      for (const dep of byId[id].depends_on || []) visit(dep, [...path, id]);
+      for (const dep of byId.get(id).depends_on || []) visit(dep, [...path, id]);
       visiting.delete(id);
       visited.add(id);
     };
-    for (const id of Object.keys(byId)) visit(id);
+    for (const id of byId.keys()) visit(id);
     for (const [metric, th] of Object.entries(loop.thresholds || {})) {
       if (metric.startsWith('$')) continue;
       checkDirection('graph/plan.json', `${loopId}.${metric}`, th);
+    }
+    for (const gid of toList(loop.gated_by)) {
+      const gate = Object.hasOwn(plan.gates, gid) ? plan.gates[gid] : null;
+      if (!gate) {
+        error('S2', 'graph/plan.json', 0, `${loopId}.gated_by references unknown gate "${gid}"`);
+        continue;
+      }
+      for (const agent of agents) {
+        const ref = `${loopId}.${agent.id}`;
+        if (!(gate.blocks_agents || []).includes(ref))
+          error('S2', 'graph/plan.json', 0,
+            `${loopId} is gated by ${gid}, but ${gid}.blocks_agents omits ${ref}`);
+      }
     }
   }
 
   // A gate that claims an agent closes it must point to a real, matching agent
   // whose work ends on the gate's close day. Check the reverse link as well.
   for (const [gid, gate] of Object.entries(plan.gates || {})) {
+    if (!Array.isArray(gate.deliverables) || !gate.deliverables.length)
+      error('S2', 'graph/plan.json', 0, `${gid}.deliverables must be a non-empty array`);
+    if (!Array.isArray(gate.evidence_keys) || !gate.evidence_keys.length ||
+        new Set(gate.evidence_keys).size !== gate.evidence_keys.length ||
+        gate.evidence_keys.some((key) => typeof key !== 'string' || !/^[a-z][a-z0-9_]*$/.test(key)))
+      error('S2', 'graph/plan.json', 0,
+        `${gid}.evidence_keys must be a non-empty array of unique snake_case keys`);
+    if (REQUIRED_GATE_EVIDENCE[gid] && !sameSet(toList(gate.evidence_keys), REQUIRED_GATE_EVIDENCE[gid]))
+      error('S2', 'graph/plan.json', 0,
+        `${gid}.evidence_keys must be [${REQUIRED_GATE_EVIDENCE[gid].join(', ')}]`,
+        'A source-of-truth edit cannot silently remove the evidence that proves a regulated gate closed.');
     if (gate.owner_loop === null && gate.satisfied_by_agent === null) continue; // human gate (G3)
-    const owner = (plan.loops || {})[gate.owner_loop];
+    const owner = Object.hasOwn(plan.loops, gate.owner_loop) ? plan.loops[gate.owner_loop] : null;
     const agent = (owner?.agents || []).find((a) => a.id === gate.satisfied_by_agent);
     if (!owner)
       error('S2', 'graph/plan.json', 0, `${gid}.owner_loop names unknown loop "${gate.owner_loop}"`);
@@ -982,7 +1704,7 @@ if (run('S2')) {
   for (const [loopId, loop] of Object.entries(plan.loops || {})) {
     for (const agent of loop.agents || []) {
       if (!agent.closes_gate) continue;
-      const gate = (plan.gates || {})[agent.closes_gate];
+      const gate = Object.hasOwn(plan.gates, agent.closes_gate) ? plan.gates[agent.closes_gate] : null;
       if (!gate)
         error('S2', 'graph/plan.json', 0,
           `${loopId}.${agent.id} closes unknown gate "${agent.closes_gate}"`);
@@ -993,11 +1715,43 @@ if (run('S2')) {
   }
 
   const milestoneIds = new Set((plan.milestones || []).map((m) => m.id));
+  if (milestoneIds.size !== (plan.milestones || []).length)
+    error('S2', 'graph/plan.json', 0, 'Milestone ids must be unique');
   for (const [gid, gate] of Object.entries(plan.gates || {})) {
-    for (const blocked of toList(gate.blocks))
-      if (!milestoneIds.has(blocked))
+    for (const ref of gate.blocks_agents || []) {
+      const parts = String(ref).split('.');
+      const loop = parts.length === 2 && Object.hasOwn(plan.loops, parts[0]) ? plan.loops[parts[0]] : null;
+      const agent = (loop?.agents || []).find((candidate) => candidate.id === parts[1]);
+      if (!agent) {
+        error('S2', 'graph/plan.json', 0, `${gid}.blocks_agents references unknown agent "${ref}"`);
+        continue;
+      }
+      if (!toList(loop.gated_by).includes(gid))
+        error('S2', 'graph/plan.json', 0,
+          `${gid}.blocks_agents includes ${ref}, but ${parts[0]}.gated_by does not include ${gid}`);
+      if (agent.start_day <= gate.closes_end_of_day)
+        error('S2', 'graph/plan.json', 0,
+          `${gid} closes end of P${gate.closes_end_of_day} but blocked agent ${ref} starts P${agent.start_day}`);
+    }
+    for (const loopId of toList(gate.blocks_loops)) {
+      if (!Object.hasOwn(plan.loops, loopId))
+        error('S2', 'graph/plan.json', 0, `${gid}.blocks_loops references unknown loop "${loopId}"`);
+    }
+    for (const blocked of toList(gate.blocks)) {
+      if (!milestoneIds.has(blocked)) {
         error('S2', 'graph/plan.json', 0,
           `${gid}.blocks references unknown milestone "${blocked}"`);
+        continue;
+      }
+      const milestone = plan.milestones.find((item) => item.id === blocked);
+      if (milestone.day <= gate.closes_end_of_day)
+        error('S2', 'graph/plan.json', 0,
+          `${gid} closes end of P${gate.closes_end_of_day} but blocked milestone ${blocked} is P${milestone.day}`);
+    }
+    const gateMilestone = plan.milestones.find((item) => item.id === `gate_${gid.toLowerCase()}`);
+    if (!gateMilestone || gateMilestone.day !== gate.closes_end_of_day)
+      error('S2', 'graph/plan.json', 0,
+        `${gid} closes P${gate.closes_end_of_day} but milestone gate_${gid.toLowerCase()} is ${gateMilestone ? `P${gateMilestone.day}` : 'missing'}`);
   }
 
   // The same rule over the other two places thresholds live. S2 used to check
@@ -1010,11 +1764,7 @@ if (run('S2')) {
     checkDirection('graph/plan.json', `measurement_definitions.${metric}`, def);
   }
   {
-    let ec2;
-    try {
-      ec2 = JSON.parse(read(join(GRAPH, 'exit-conditions.json')));
-    } catch { /* C2 reports the parse failure */ }
-    for (const [loopId, t] of Object.entries(ec2 || {})) {
+    for (const [loopId, t] of Object.entries(exitConditions)) {
       for (const [metric, m] of Object.entries((t || {}).metrics || {})) {
         if (metric.startsWith('$')) continue;
         checkDirection('graph/exit-conditions.json', `${loopId}.${metric}`, m);
@@ -1028,7 +1778,7 @@ if (run('S2')) {
   // a graph was held by nothing but P21 being greater than P20.
   for (const [loopId, loop] of Object.entries(plan.loops || {})) {
     for (const dep of toList(loop.depends_on_loops)) {
-      const d = (plan.loops || {})[dep];
+      const d = Object.hasOwn(plan.loops, dep) ? plan.loops[dep] : null;
       if (!d) {
         error('S2', 'graph/plan.json', 0, `${loopId}.depends_on_loops names unknown loop "${dep}"`);
         continue;
@@ -1039,16 +1789,17 @@ if (run('S2')) {
           'depends_on_loops means "that loop must be COMPLETE first". A gate dependency belongs in gated_by.');
     }
   }
+  const requiredSynthesisDependencies = Object.keys(LOOP_FILES).filter((id) => id !== 'loop_e');
+  if (plan.loops.loop_e && !sameSet(toList(plan.loops.loop_e.depends_on_loops), requiredSynthesisDependencies))
+    error('S2', 'graph/plan.json', 0,
+      `loop_e.depends_on_loops must be [${requiredSynthesisDependencies.join(', ')}]`,
+      'Loop-E claims to synthesize every other loop output, so all four dependency edges are required.');
 
   // A binary requirement due after its owner has closed has no owner. This is
   // why loop_e's legal_review and cto_review (due_day 26, loop ends P25) became
   // gate G3.
   {
-    let ec3;
-    try {
-      ec3 = JSON.parse(read(join(GRAPH, 'exit-conditions.json')));
-    } catch { /* reported by C2 */ }
-    for (const [loopId, t] of Object.entries(ec3 || {})) {
+    for (const [loopId, t] of Object.entries(exitConditions)) {
       if (!t || typeof t.start_day !== 'number') continue;
       for (const [req, v] of Object.entries(t.binary_requirements || {})) {
         if (!v || typeof v.due_day !== 'number') continue;
@@ -1078,15 +1829,21 @@ if (run('S2')) {
 // ---------------------------------------------------------------------------
 const errors = findings.filter((f) => f.level === 'error');
 const warns = findings.filter((f) => f.level === 'warn');
+const blockingFindings = strict ? findings : errors;
+const executedChecks = only ? [only.toUpperCase()] : [...CHECK_IDS];
 
 if (asJson) {
-  console.log(JSON.stringify({ errors: errors.length, warnings: warns.length, findings, exemptions }, null, 2));
-  process.exit(errors.length ? 1 : 0);
+  // stdout is a pipe in the mutation/regression suites. `console.log()` plus
+  // immediate `process.exit()` can drop buffered output (observed at 64 KiB),
+  // turning a valid large report into truncated JSON. A synchronous fd write
+  // makes the machine-readable contract atomic from the caller's perspective.
+  writeFileSync(1, `${JSON.stringify({ executed_checks: executedChecks, strict, errors: errors.length, warnings: warns.length, findings, exemptions }, null, 2)}\n`);
+  process.exit(blockingFindings.length ? 1 : 0);
 }
 
 const printExemptions = () => {
   if (!exemptions.length) return;
-  console.log('  Exemptions in force (declared in-file, each with a reason):');
+  console.log('  Centrally reviewed exemptions in force:');
   for (const e of exemptions) console.log(`    ${e.check}  ${e.file}\n         ${e.reason}`);
   console.log('');
 };
@@ -1104,8 +1861,8 @@ const CHECK_NAMES = {
 console.log('\n  pre-publish validation — graph/\n');
 
 if (!findings.length) {
-  console.log('  All checks passed.\n');
-  for (const [id, name] of Object.entries(CHECK_NAMES)) console.log(`    ok   ${id}  ${name}`);
+  console.log(`  ${only ? 'Selected check passed.' : 'All checks passed.'}\n`);
+  for (const id of executedChecks) console.log(`    ok   ${id}  ${CHECK_NAMES[id]}`);
   console.log('');
   printExemptions();
   console.log('  Reminder: this is the floor, not the ceiling. The linter cannot');
@@ -1130,5 +1887,5 @@ for (const [check, list] of Object.entries(grouped)) {
 }
 
 printExemptions();
-console.log(`  ${errors.length} error(s), ${warns.length} warning(s)\n`);
-process.exit(errors.length ? 1 : 0);
+console.log(`  ${errors.length} error(s), ${warns.length} warning(s)${strict ? ' (strict: warnings block)' : ''}\n`);
+process.exit(blockingFindings.length ? 1 : 0);

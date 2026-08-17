@@ -23,7 +23,7 @@
  * defect as it actually existed.
  */
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, copyFileSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -71,18 +71,27 @@ try {
   copyFileSync(join(ROOT, 'tools', 'validate-graph.mjs'), join(tmp, 'tools', 'validate-graph.mjs'));
   writeFileSync(join(tmp, '.gitignore'), 'node_modules/\ndist/\ngraph/output/\n');
 
-  let raw;
-  try {
-    raw = execFileSync('node', ['tools/validate-graph.mjs', '--json'], {
-      cwd: tmp,
-      encoding: 'utf8',
-      maxBuffer: 32 * 1024 * 1024,
-    });
-  } catch (e) {
-    raw = e.stdout; // non-zero exit is the expected outcome here
-  }
+  const historical = spawnSync(process.execPath, ['tools/validate-graph.mjs', '--json'], {
+    cwd: tmp,
+    encoding: 'utf8',
+    maxBuffer: 32 * 1024 * 1024,
+    timeout: 30_000,
+  });
+  if (historical.error) throw historical.error;
+  if (historical.signal) throw new Error(`validator terminated by ${historical.signal}`);
+  if (historical.status !== 1)
+    throw new Error(`historical defect fixture returned exit ${historical.status}, expected 1\n${historical.stdout}${historical.stderr}`);
 
-  const report = JSON.parse(raw);
+  let report;
+  try {
+    report = JSON.parse(historical.stdout);
+  } catch (e) {
+    const position = Number(e.message.match(/position (\d+)/)?.[1]);
+    const context = Number.isInteger(position)
+      ? historical.stdout.slice(Math.max(0, position - 120), position + 120)
+      : historical.stdout.slice(0, 500);
+    throw new Error(`validator returned invalid JSON: ${e.message}\nContext: ${JSON.stringify(context)}`);
+  }
   const counts = {};
   for (const f of report.findings) counts[f.check] = (counts[f.check] || 0) + 1;
 
@@ -102,26 +111,27 @@ try {
   if (failed) {
     console.error(`  ${failed} check(s) no longer detect the defects they were written for.`);
     console.error('  A check was probably weakened to make a new document pass.\n');
-    process.exit(1);
+    process.exitCode = 1;
   }
 
   // And the current tree must be clean.
-  let current = 0;
-  try {
-    execFileSync('node', ['tools/validate-graph.mjs'], { cwd: ROOT, encoding: 'utf8' });
-  } catch {
-    current = 1;
-  }
-  if (current) {
+  const current = spawnSync(process.execPath, ['tools/validate-graph.mjs'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    timeout: 30_000,
+  });
+  if (current.error) throw current.error;
+  if (current.signal) throw new Error(`current validator terminated by ${current.signal}`);
+  if (current.status !== 0) {
     console.error('  Current tree does NOT pass validation. Run: node tools/validate-graph.mjs\n');
-    process.exit(1);
+    process.exitCode = 1;
   }
 
-  console.log('  Current tree passes. v1.0 fails in all five categories. Test green.\n');
-  process.exit(0);
+  if (!failed && current.status === 0)
+    console.log('  Current tree passes. v1.0 fails in all five categories. Test green.\n');
 } catch (e) {
   console.error(`\n  Could not run regression test: ${e.message}\n`);
-  process.exit(2);
+  process.exitCode = 2;
 } finally {
   if (tmp) try { rmSync(tmp, { recursive: true, force: true }); } catch {}
 }

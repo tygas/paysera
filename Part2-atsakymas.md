@@ -20,7 +20,7 @@ Diagnozė: klaida ne generavime — **generavimas ir publikavimas buvo vienas ž
 
 1. **Vienintelis tiesos šaltinis** — `graph/plan.json`; dienos, agentai, slenksčiai, vartai viename faile, visa kita lyginama su juo.
 2. **Validatorius** — `tools/validate-graph.mjs`, po patikrinimą kiekvienai rastai kategorijai (C1–C5, S1–S2).
-3. **Regresinis testas** — `tools/test-validator.mjs`: validatorius paleidžiamas ant tikro v1.0 commit'o `f3cbfba` ir privalo rasti visas penkias kategorijas (208 radinių). Susilpninta patikra — raudonas testas.
+3. **Regresinis testas** — `tools/test-validator.mjs`: validatorius paleidžiamas ant tikro v1.0 commit'o `f3cbfba` ir privalo rasti visas penkias kategorijas (šiuo metu — 413 radinių). Susilpninta patikra — raudonas testas.
 4. **Mutaciniai testai** — `tools/test-implementation-checks.mjs`: kiekviena patikra privalo aptikti į medžio kopiją grąžintą savo defektą. Atsirado po to, kai vidinis auditas rado negyvą patikrinimą, kurį dokumentacija vadino veikiančiu.
 5. **Hook'as** — `tools/pre-publish-guard.mjs` (`PreToolUse`): blokuoja `git commit / push / deploy`, jei validatorius krenta. Nepriklauso nuo to, ar prisiminsiu.
 6. **Peržiūros skill'as** — penki atskiri adversarial pass'ai; kiekvienas grąžina radinius su `file:line` arba „No findings".
@@ -37,9 +37,21 @@ node tools/validate-graph.mjs      # dabartinė būklė — 0 klaidų
 node tools/test-validator.mjs      # v1.0 regresija
 ```
 
+### Kaip naudotis grafu — paprastai
+
+`graph/` katalogas yra 30 dienų piloto planas, užrašytas taip, kad jį galėtų tikrinti programa, o ne tik skaityti žmogus. 
+Skaityti pradėkite nuo `graph/README.md` — jis lietuviškai paaiškina visą struktūrą. Planą sudaro penki darbų srautai: pokalbiai su pardavėjais (A), 
+teisinis pagrindas (B), skelbimo iš nuotraukos prototipas (C), pakartotinių pardavėjų atranka pilotui (D) ir galutinis piloto brief'as (E). 
+Trys vartai (G1–G3) yra ne kalendoriaus etapai, o sąlygos: kol vartai neuždaryti — pavyzdžiui, 
+kol nėra rašytinio teisinio sprendimo dėl asmens duomenų (G1) — nuo jų priklausantys darbai tiesiog nevyksta,
+kad ir kaip vėluotų grafikas. Visos dienos, skaičiai ir slenksčiai gyvena viename faile — `graph/plan.json`; 
+visi kiti dokumentai jį tik atkartoja, o jei kur nors atsiranda neatitikimas, aukščiau parodytos dvi komandos jį suranda ir publikavimas sustabdomas automatiškai.
+
 ## 3. Trys spragos
 
-**Mokami AI planai.** ChatGPT Pro/Max — nuo **2025 m. pradžios** (agentų organizavimas, kodo peržiūros, rinkos analizė). Claude Team — nuo **2026 m. vasaros**, dabar pagrindinis darbo įrankis. OpenCode Zen + usage-based API — nuo 2026 m. vasaros, modelių vertinimui ir pigesnių užduočių nukreipimui. Iš viso — apie pusantrų metų;
+**Mokami AI planai.** ChatGPT Pro/Max — nuo **2025 m. pradžios** (agentų organizavimas, kodo peržiūros, rinkos analizė).
+Claude Team — nuo **2026 m. pavasario**, dabar pagrindinis darbo įrankis.
+OpenCode Zen + usage-based API — nuo 2026 m. vasaros, modelių vertinimui ir pigesnių užduočių nukreipimui. Iš viso — apie pusantrų metų.
 
 **US Bank.** Senior Front End Developer  · **2022 m. gruodis – 2024 m. balandis (1 m. 5 mėn.)**. Mano komanda: 5 FE inžinieriai, 4 QA, 1 Product Owner. „Penkios komandos" reiškė dvi FE ir dvi BE komandas Lietuvoje plius vieną JAV, kurių darbas eidavo į vieną release'ą — atstovavau savo komandai Agile Nexus susitikimuose.
 

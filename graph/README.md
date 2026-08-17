@@ -29,7 +29,7 @@ v1.0 versijoje „DAY 30" viename dokumente reiškė „pilotas prasideda", o ki
 
 ## Vartai (gates)
 
-Šiame grafe yra du vartai. Jie nėra etapai — jie yra sąlygos, be kurių
+Šiame grafe yra trys vartai. Jie nėra etapai — jie yra sąlygos, be kurių
 konkretūs agentai neveikia.
 
 ### G1 — teisinis pagrindas asmens duomenims · uždaromas **P6 pabaigoje**
@@ -138,9 +138,9 @@ o vėlavimo eilutėse — vėliausią datą. Tas pats žodis reiškė ir grindis
 
 | Lygis | Reikšmė |
 |---|---|
-| **minimum** | Žemiau — loop'as neįvykdytas. Ne švelnus tikslas. |
+| **minimum** | Žemiausia priimtina baigtis. Žemiau — loop'as neįvykdytas. |
 | **maximum** | Aukščiau — loop'as neįvykdytas. Rodikliams, kur mažiau yra geriau. |
-| **target** | Planuotas rezultatas. Pasiekus — loop'as baigtas. |
+| **target** | Planuotas rezultatas. Tarp minimum ir target loop'as baigiamas kaip `below_target` ir eskaluojamas, o ne paliekamas amžinai vykdomas. |
 | **stretch** | Geriau nei planuota. Niekada nėra priežastis pratęsti terminą. |
 
 Kiekvienas rodiklis turi `direction`: `higher_better` naudoja `minimum`,
@@ -269,7 +269,7 @@ beveik nenaudojamas, Vinted yra drabužių perpardavimo prekyvietė.
 **Trys binary reikalavimai:**
 1. Jokios užklausos į klientų duomenis prieš uždarant G1.
 2. Sutikimas gaunamas **prieš** dalyvavimą — ne trečiame verbavimo žingsnyje.
-3. AML/KYC duomenys atrankai nenaudojami be atskiro G1 leidimo raštu.
+3. AML/KYC, tapatybės, ginčų duomenys ir iš jų išvesti sprendimai atrankai nenaudojami.
 
 **Skatinimas:** 25 EUR, nekintantis.
 

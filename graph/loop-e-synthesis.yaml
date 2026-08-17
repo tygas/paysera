@@ -25,7 +25,7 @@ depends_on_loops: [loop_a, loop_b, loop_c, loop_d]
 
 depends_on_completion:
   loop-a: "extract_insights baigtas (P20)"
-  loop-b: "map_to_pilot_scope baigtas, G2 uždarytas arba atviri punktai surašyti (P15)"
+  loop-b: "map_to_pilot_scope baigtas ir G2 uždarytas (P15)"
   loop-c: "quality_check_outputs baigtas (P15)"
   loop-d: "analyze_cohort_profile baigtas (P19)"
 
@@ -95,7 +95,8 @@ agents:
          - Kohortos rizika pagal Loop-D
          - Teisinė parengtis pagal Loop-B, ĮSKAITANT atvirus punktus
          - Bendras vertinimas: išvada formuluojama TIK iš aukščiau esančių
-           duomenų. Jei G2 neuždarytas, rizika negali būti „žema".
+           duomenų. Agentas startuoja tik uždarius G2; visi likę atviri
+           punktai išvardijami kaip rizikos, o ne kaip vartų pakaitalas.
 
       IŠVESTIS: viena struktūra + 1 psl. santrauka. Kiekvienas teiginys su žyma.
 
@@ -209,7 +210,7 @@ agents:
         derived_from_cohort: integer
 
     success_criteria:
-      minimum: "1 persona su žymomis ir „ko nežinome" skyriumi"
+      minimum: '1 persona su žymomis ir „ko nežinome“ skyriumi'
       target: "1 persona + atitikimo kohortai patikra"
       stretch: "2–3 personos"
 

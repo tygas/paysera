@@ -3,7 +3,7 @@
 **Auditas:** 2026-08-16
 **Objektas:** v1.0 (`graph/` @ `f3cbfba`, 2026-08-11) kaip dokumentas ir v2.0 kaip implementacija
 **Rezultatas:** 25 radiniai v1.0 (18 penkiose nurodytose kategorijose + 7 papildomi) ir 15 radinių v2.0 implementacijoje. Visi ištaisyti.
-**Patikra:** `node tools/validate-graph.mjs` — v2.0: 0 klaidų. v1.0 medyje: 208 (140 su pirminėmis patikromis, +68 po II dalies patikrų išplėtimo).
+**Patikra:** `node tools/validate-graph.mjs` — v2.0: 0 klaidų. v1.0 medyje: 413 (140 su pirminėmis patikromis; skaičius auga su kiekvienu patikrų sustiprinimu — galiojantį skaičių spausdina `node tools/test-validator.mjs`).
 
 <!-- validator:allow-file C5 — Šis dokumentas cituoja rastas kalbos klaidas pažodžiui, įskaitant kirilicos simbolį. Be jų radinio neįmanoma dokumentuoti. Išimtis galioja tik C5 ir tik šiam failui; validatorius ją išspausdina kiekvieno paleidimo santraukoje. -->
 
@@ -18,7 +18,7 @@
 - Apsaugotas mokėjimas aprašytas kaip esama funkcija — nors laiškas, kurio įrodymas grafas turėjo būti, jį vadino hipoteze.
 - `loop-e-synthesis.yaml` prompt'e iš anksto įrašytos išvados („Pilot launch is low-risk…") — agentas negalėjo grąžinti „ne".
 
-**Taisymas:** šablonas perrašytas tuščias, kiekvienas skaičius → `[TBD]`; privalomas šaltinių žymėjimas `[A:n] [B] [C] [D] [EXT:url] [HYPOTHESIS] [TBD]` — nepažymėtas teiginys blokuoja brief'ą; išvados iš prompt'ų pašalintos; hipotezė visur pažymėta. **Gaudyklė: C4** (v1.0: 22 radiniai).
+**Taisymas:** šablonas perrašytas tuščias, kiekvienas skaičius → `[TBD]`; privalomas šaltinių žymėjimas `[A:n] [B] [C] [D] [EXT:url] [HYPOTHESIS] [TBD]` — nepažymėtas teiginys blokuoja brief'ą; išvados iš prompt'ų pašalintos; hipotezė visur pažymėta. **Gaudyklė: C4** (v1.0: 22 radiniai pirminėmis patikromis; su dabartinėmis — 25).
 
 ### 2. Ne tos rinkos konkurentai · aukštas
 
@@ -42,7 +42,7 @@ Laiške konkurentai įvardyti: *aruodas / autoplius / skelbiu*. `graph/` katalog
 - Stulpelis „Kritinis" reiškė žemiausią kartelę vienoje eilutėje ir vėliausią datą kitoje.
 - Grafas planavo 15–20 pokalbių; laiškas sakė 10–15. Plius: 1 500 EUR riba pavadinta „AML threshold" (nebuvo), NPS x/10 skalėje prie n=5, nesutampantys katalogų keliai ir skatinimo dydžiai.
 
-**Taisymas:** `graph/plan.json` — vienintelis tiesos šaltinis (dienos, agentai, slenksčiai, vartai); du laikrodžiai `P1–P30` / `L1–L30`; terminologija `minimum / target / stretch`; agentų vardai suvienodinti; pokalbiai 10/12/15 pagal laišką; vienas skatinimo dydis auditorijai. **Gaudyklė: C2 + S2** (v1.0: 51 radinys; po II dalies patikrų išplėtimo — 119).
+**Taisymas:** `graph/plan.json` — vienintelis tiesos šaltinis (dienos, agentai, slenksčiai, vartai); du laikrodžiai `P1–P30` / `L1–L30`; terminologija `minimum / target / stretch`; agentų vardai suvienodinti; pokalbiai 10/12/15 pagal laišką; vienas skatinimo dydis auditorijai. **Gaudyklė: C2 + S2** (v1.0: 51 radinys pirminėmis patikromis; su dabartinėmis — 321).
 
 ### 5. Proceso sekos klaida · kritinis, rimčiausias radinys
 
@@ -92,8 +92,8 @@ Diagnozė: klaida ne generavime — **generavimas ir publikavimas buvo vienas ž
 
 1. **Vienintelis tiesos šaltinis** — `graph/plan.json`; visi kiti failai iš jo išvedami ir su juo lyginami.
 2. **Validatorius** — `tools/validate-graph.mjs`: C1 seka/vartai · C2 nuokrypis tarp dokumentų · C3 rinka · C4 nešaltiniuoti teiginiai · C5 kalbos artefaktai · S1 asmens duomenų higiena · S2 `plan.json` vidinis nuoseklumas.
-3. **Regresinis testas** — `tools/test-validator.mjs`: paleidžia validatorių ant tikro v1.0 commit'o `f3cbfba` ir reikalauja, kad visos penkios kategorijos suveiktų (208 radinių). Susilpninta patikra — raudonas testas.
-4. **Mutaciniai testai** — `tools/test-implementation-checks.mjs`: 12 atvejų, kiekviena nauja patikra privalo aptikti savo defektą.
+3. **Regresinis testas** — `tools/test-validator.mjs`: paleidžia validatorių ant tikro v1.0 commit'o `f3cbfba` ir reikalauja, kad visos penkios kategorijos suveiktų (šiuo metu — 413 radinių). Susilpninta patikra — raudonas testas.
+4. **Mutaciniai testai** — `tools/test-implementation-checks.mjs`: 58 atvejai, kiekviena nauja patikra privalo aptikti savo defektą.
 5. **Hook'as** — `tools/pre-publish-guard.mjs` (`.claude/settings.json`, `PreToolUse`): perima `git commit / push / deploy` ir blokuoja, jei validatorius krenta. Nepriklauso nuo to, ar prisiminsiu.
 6. **Peržiūros skill'as** — `.claude/skills/pre-publish-audit/SKILL.md`: penki atskiri adversarial pass'ai; kiekvienas grąžina radinius su `file:line` arba „No findings" — „atrodo gerai" negalioja.
 7. **`CLAUDE.md`** — taisyklės kiekvienai sesijai, įskaitant vertingiausią:
@@ -105,7 +105,7 @@ Diagnozė: klaida ne generavime — **generavimas ir publikavimas buvo vienas ž
 
 ```bash
 node tools/validate-graph.mjs              # dabartinė būklė — 0 klaidų
-node tools/test-validator.mjs              # v1.0 regresija — 208 radinių penkiose kategorijose
+node tools/test-validator.mjs              # v1.0 regresija — 413 radinių penkiose kategorijose
 node tools/test-implementation-checks.mjs  # 12/12 mutacijų aptikta
 ```
 

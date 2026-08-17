@@ -24,7 +24,7 @@ build if a day, an agent name, a threshold or a gate drifts between documents.
 
 ## 2. Execution model
 
-### 2.1 Two gates, not five parallel loops
+### 2.1 Three gates, not five parallel loops
 
 Version 1.0 stated **"Dependencies: None between loops"** and ran all four data
 loops from P1. That was the most serious defect in the graph: Loop-D queried
@@ -104,9 +104,9 @@ Agent names here are identical to the `name:` fields in the YAML files and the
 
 Defined once in `plan.json`. Every metric declares a `direction`:
 
-- **`higher_better`** — uses **minimum**. Below it the loop has failed.
+- **`higher_better`** — uses **minimum**, the lowest acceptable completion boundary. Below it the loop has failed.
 - **`lower_better`** — uses **maximum**. Above it the loop has failed.
-- **target** — the planned outcome. Loop is COMPLETE here.
+- **target** — the planned outcome. A result between minimum and target closes as `below_target` and is escalated; it is not left running indefinitely.
 - **stretch** — better than planned. Never a reason to extend the timeline.
 - **`binary`** — done or not; no numeric levels.
 
@@ -164,7 +164,7 @@ every listing carrying invented specs.
 | C | Blind review; ground truth recorded before the AI run |
 | D | No customer query before G1 |
 | D | Consent before participation |
-| D | No KYC/AML reuse without explicit written G1 permission |
+| D | No KYC/AML, identity, dispute-data, or derived-eligibility reuse |
 | E | Zero untagged factual claims |
 | E | No pre-written conclusions in synthesis prompts |
 | **G3** | CTO review **and** Legal review — both mandatory, both with a named reviewer and a date |
@@ -180,7 +180,7 @@ Update `exit-conditions.json`. One file, one shape:
 "loop_a": {
   "status": "in_progress",
   "metrics": {
-    "interviews_completed": { "minimum": 10, "target": 12, "stretch": 15, "current": 8, "status": "on_track" }
+    "interviews_completed": { "minimum": 10, "target": 12, "stretch": 15, "current": 8, "status": "in_progress" }
   }
 }
 ```

@@ -49,8 +49,8 @@ of Loop-E, not a style note.
 | | Sample | Meaning |
 |---|---|---|
 | Interviews | `[TBD] of 10–12 planned` | Qualitative. Directional, not representative. |
-| AI test photos | `[TBD] of 10 planned` | n=10 cannot establish an accuracy rate. It shows failure modes. |
-| Pilot cohort | `[TBD] of 5 planned` | n=5. Averages here describe five people, not a market. |
+| AI test photos | `[TBD: actual n] of 10 planned` | Report the actual n. A small sample shows failure modes, not an accuracy rate. |
+| Pilot cohort | `[TBD: actual n] of 5 planned` | Report the actual n. Averages describe this cohort, not a market. |
 
 ### 0.3 Not confirmed at time of writing
 
@@ -175,12 +175,11 @@ not moved to an appendix.
 excluded):
 - ≥ 2 completed electronics transactions in the last 90 days
 - Average transaction value ≥ 100 EUR
-- 0 disputes
 - ≥ 2 distinct buyers
-- Compliance eligibility decision returned as `eligible` `[B]`
+- Active in the last 30 days and within the pilot category
 - Consent obtained **before** participation `[D]`
 
-**Cohort composition** — filled from `analyze_cohort_profile`, n=5:
+**Cohort composition** — filled from `analyze_cohort_profile`, actual n = `[TBD]`:
 
 | Seller ref | Frequency | Avg value | Category | Consent date | Tag |
 |---|---|---|---|---|---|
@@ -191,8 +190,8 @@ excluded):
 > "Risk assessment: LOW. No AML flags." Nobody had been recruited. A reader
 > skimming the brief would have taken it for a recruited cohort.
 
-**Sample caveat (mandatory):** n=5 is a qualitative cohort. Averages describe
-these five sellers only.
+**Sample caveat (mandatory):** actual n = `[TBD]`. This is a qualitative
+cohort; averages describe these sellers only.
 
 ### 3.2 Features in the pilot
 
@@ -254,8 +253,8 @@ starts at L1.*
 | 14-day sell-through | 40% | 50% | 60% | Sold within 14d / activated listings, vs each seller's own baseline |
 | Listing creation time | ≤ 10 min | ≤ 5 min | ≤ 3 min | First photo to published |
 | AI listing quality | ≥ 6/10 | ≥ 7/10 | ≥ 8/10 | Blind human review vs ground truth |
-| Hallucinated specs | ≤ 5% | 0% | 0% | Listings containing a spec not visible/derivable from the photo |
-| Participation | ≥ 3 of 5 sellers list ≥ 3 items | 5 of 5 | — | Platform data |
+| Hallucinated specs | ≤ 5% | 0% | 0% | Listings containing a spec the device does not have, checked against pre-run human ground truth |
+| Participation | `[TBD threshold]` sellers list ≥ 3 items | `[TBD target]` | — | Platform data; show numerator / actual cohort n |
 
 **Hallucination rate is a safety metric, not a quality metric.** A listing that
 states a storage size or condition the device does not have is a misleading
@@ -272,7 +271,7 @@ statement to a consumer, published by a regulated institution.
 
 > Template note: v1.0 set "Seller NPS ≥ 7/10" and reported a cohort "NPS
 > (pre-pilot): 7.8/10". NPS is a promoter-minus-detractor figure on a −100 to
-> +100 scale, not an x/10 score — and at n=5 a single detractor swings it by
+> +100 scale, not an x/10 score — and in a small cohort one detractor swings it by
 > 20 points, so it carries no information. Renamed to a plain mean
 > recommendation score and rescaled.
 
@@ -283,7 +282,7 @@ statement to a consumer, published by a regulated institution.
 | Low sell-through | < 40% by L21 | Diagnose pricing / description / visibility before changing the product |
 | Any dispute | 1 raised | Escalate per `[B]`; treat as a finding, not an accident |
 | Hallucinated listing published | 1 occurrence | Stop auto-publish, add mandatory review step, report to `[B]` |
-| Cohort attrition | < 3 of 5 complete ≥ 3 listings | Report as "insufficient evidence", not as failure of the idea |
+| Cohort attrition | Below the approved participation threshold | Report actual numerator / denominator as "insufficient evidence", not as failure of the idea |
 
 > Template note: v1.0 listed "Zero disputes or chargebacks during pilot" as a
 > success metric. Zero disputes across five sellers over 30 days is the
@@ -320,7 +319,7 @@ Items marked `blocking: true` prevent pilot launch.
 | Lawful basis per purpose | `[TBD]` | `[B]` (G1 decision) |
 | DPIA required | `[TBD]` | `[B]` |
 | Retention and deletion | `[TBD]` | `[B]` |
-| KYC/AML data reused for recruitment | Default **no** | `[B]` |
+| KYC/AML, dispute data, or derived eligibility reused for recruitment | **No** — binary requirement | `[B][D]` |
 
 ---
 
@@ -339,7 +338,7 @@ Items marked `blocking: true` prevent pilot launch.
 ### 6.2 If one metric misses
 
 Pick **one** high-impact change, re-run with the same cohort, re-measure. Do not
-change three things at once — with n=5 nothing will be attributable.
+change three things at once — with a small cohort nothing will be attributable.
 
 | Metric missed | First hypothesis to test |
 |---|---|
@@ -370,7 +369,7 @@ ship pre-filled.**
 | C | Legal checklist | Loop-B `map_to_pilot_scope` | Source per rule; open items |
 | D | Interview insights | Loop-A `extract_insights` | Real denominators; verbatim flags |
 | E | AI quality report | Loop-C `quality_check_outputs` | Sample size; blind-review note |
-| F | Cohort profile | Loop-D `analyze_cohort_profile` | n=5 caveat; consent dates |
+| F | Cohort profile | Loop-D `analyze_cohort_profile` | Actual-n caveat; consent dates |
 
 > Template note: v1.0's Appendices D, E and F were fully written out — theme
 > counts, a v1/v2/v3 comparison matrix with Flesch scores, cohort demographics

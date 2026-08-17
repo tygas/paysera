@@ -23,8 +23,8 @@ gated_by: [G1]
 # be užfiksuoto teisinio pagrindo ir AML/KYC duomenų panaudojimas rinkodarai
 # (tikslo apribojimo pažeidimas).
 #
-# Šioje versijoje: startas P7, po G1; KYC/AML laukai iš atrankos pašalinti,
-# nebent G1 juos raštu leidžia; sutikimas — pirmas žingsnis, ne trečias.
+# Šioje versijoje: startas P7, po G1; KYC/AML ir ginčų laukai iš
+# atrankos pašalinti be išimčių; sutikimas — pirmas žingsnis, ne trečias.
 # ---------------------------------------------------------------------------
 
 agents:
@@ -43,7 +43,7 @@ agents:
       Užklausa į Paysera sandorių duomenis:
 
       1. FILTRAI:
-         - kategorija: elektronika (telefonai, nešiojamieji, planšetės)
+         - kategorija: elektronika (telefonai, nešiojamieji kompiuteriai)
          - laikotarpis: paskutinės 90 dienų
          - pakartotiniai sandoriai: >= 2
          - būsena: „completed"
@@ -54,29 +54,22 @@ agents:
          - avg_transaction_value_EUR
          - first_transaction_date, last_transaction_date
          - buyer_diversity (kiek skirtingų pirkėjų)
-         - dispute_count
 
       3. ATRANKOS KRITERIJAI:
          - >= 2 užbaigti sandoriai per 90 dienų
          - vidutinė vertė >= 100 EUR
-         - dispute_count = 0
          - buyer_diversity >= 2
 
       4. KO ČIA NĖRA IR KODĖL:
          v1.0 atranka naudojo AML žymas, chargeback istoriją ir tapatybės
          patvirtinimo statusą. Šie duomenys surinkti vykdant teisinę prievolę
-         (AML/KYC), o ne produkto tyrimui, todėl pagal nutylėjimą jų
+         (AML/KYC), o ne produkto tyrimui, todėl jų
          pakartotinai nenaudojame — tai tikslo apribojimo klausimas
          (BDAR 5 str. 1 d. b p.).
 
-         Rizikos filtravimas vis tiek reikalingas, todėl jis atliekamas
-         KITAIP: sąrašą peržiūri Compliance savo pusėje ir grąžina
-         „tinka / netinka" be pagrindimo detalių. Mes gauname sprendimą,
-         o ne duomenis.
-
-         Jei G1 raštu leidžia tiesioginį naudojimą (`kyc_aml_reuse_permitted:
-         true`), tada ir tik tada šie laukai grįžta į filtrus, nurodant
-         G1 sprendimo datą.
+         Atrankai nenaudojami ir sprendimai, išvesti iš AML/KYC, tapatybės
+         patvirtinimo, chargeback ar ginčų duomenų. „Tinka / netinka" išvada,
+         paremta tokiais laukais, tebėra jų panaudojimas kitu tikslu.
 
       5. PSEUDONIMIZAVIMAS: darbinis sąrašas — su `seller_ref`.
          Tikri kontaktai atsiranda tik `recruit_pilot_cohort` žingsnyje ir
@@ -95,12 +88,7 @@ agents:
       inclusion_criteria:
         min_transactions: 2
         min_avg_value_EUR: 100
-        max_disputes: 0
         min_buyer_diversity: 2
-      risk_screening:
-        performed_by: "Compliance (savo pusėje)"
-        returns: "eligible: true|false"
-
     output_schema: |
       - seller_ref: string (pseudonimizuotas)
       - transaction_count: integer
@@ -108,8 +96,6 @@ agents:
       - first_transaction_date: YYYY-MM-DD
       - last_transaction_date: YYYY-MM-DD
       - buyer_diversity_count: integer
-      - dispute_count: integer
-      - compliance_eligible: bool
       - rank: integer
 
     success_criteria:
@@ -117,7 +103,7 @@ agents:
       target: 50
       stretch: 100
 
-    owner: "Data komanda (užklausa) + Compliance (rizikos peržiūra) + Eimantas"
+    owner: "Data komanda (užklausa) + Eimantas"
 
   # -------------------------------------------------------------------------
   - name: enrich_seller_profiles
@@ -311,15 +297,15 @@ agents:
          - Ar jų elgsena atitinka Loop-A rastas temas?
          - Kur nesutampa? Nesutapimas yra svarbesnis radinys nei sutapimas.
 
-      4. RIZIKOS PROFILIS:
-         - Ginčų istorija (0 ginčų — atrankos sąlyga)
-         - Compliance grąžintas tinkamumo sprendimas
+      4. ATRANKOS APRIBOJIMAI:
+         - AML/KYC, tapatybės patvirtinimo ir ginčų duomenys nenaudojami
+         - Iš šių duomenų išvesti tinkamumo sprendimai taip pat nenaudojami
 
       DRAUDIMAI:
       - Nerašyk „vidutinis amžius 36", jei amžiaus duomenų nerinkome.
-      - Kiekvienas skaičius turi turėti šaltinį ir imtį (n=5).
-      - n=5 yra kokybinė imtis. Vidurkiai iš penkių žmonių pateikiami
-        kaip aprašymas, o ne kaip statistika.
+      - Kiekvienas skaičius turi turėti šaltinį ir faktinį imties dydį (n).
+      - Faktinė maža kohorta yra kokybinė imtis. Vidurkiai pateikiami kaip
+        šios kohortos aprašymas, o ne kaip rinkos statistika.
 
       IŠVESTIS: kohortos aprašas + personos piloto UX'ui.
 
@@ -330,7 +316,7 @@ agents:
     output_schema: |
       cohort_summary:
         size: integer
-        sample_note: "n=5 — kokybinė imtis, ne statistinė"
+        sample_note: "faktinis n — kokybinė imtis, ne rinkos statistika"
         avg_transactions_per_month: {value: float, n: integer}
         avg_item_value_EUR: {value: float, n: integer}
         primary_categories: [string]
@@ -372,18 +358,19 @@ exit_conditions:
       stretch: 7
 
     - metric: cohort_profile_documented
+      direction: binary
       minimum: "sudėtis ir kategorijos"
       target: "aprašas + personos + palyginimas su Loop-A"
 
   binary_requirements:
-    - id: g1_before_query
+    - id: no_query_before_g1
       description: "Jokios užklausos į klientų duomenis prieš uždarant G1"
       substitute_allowed: false
     - id: consent_before_participation
       description: "Sutikimas gaunamas prieš dalyvavimą ir prieš duomenų naudojimą pilote"
       substitute_allowed: false
-    - id: no_kyc_reuse
-      description: "AML/KYC duomenys nenaudojami atrankai be atskiro G1 leidimo"
+    - id: no_kyc_aml_reuse
+      description: "AML/KYC, tapatybės ir ginčų duomenys bei iš jų išvesti sprendimai atrankai nenaudojami"
       substitute_allowed: false
 
   timeline:

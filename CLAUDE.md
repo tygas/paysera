@@ -25,9 +25,10 @@ read back. See [`AUDIT-graph-2026-08-16.md`](AUDIT-graph-2026-08-16.md).
 ## Before any commit that touches `graph/`
 
 ```bash
-node tools/validate-graph.mjs             # must exit 0
+node tools/validate-graph.mjs --strict    # must exit 0; warnings block publication
 node tools/test-validator.mjs             # proves the checks still detect the v1.0 defects
 node tools/test-implementation-checks.mjs # proves each check can still be made to fail
+node tools/test-pre-publish-guard.mjs     # proves command detection and snapshot checks fail closed
 ```
 
 **A green validator run is not evidence that a check ran.** On 2026-08-16 an
@@ -131,7 +132,7 @@ Applies to prose, agent prompts, YAML comments and email templates alike — the
 | `Part2-atsakymas.md` | The follow-up reply |
 | `AUDIT-graph-2026-08-16.md` | Findings and fixes: part I — the v1.0 graph as a document; part II — the v2.0 graph as an implementation |
 | `graph/plan.json` | **Single source of truth** for the loop graph |
-| `graph/` | The loop graph — five loops, two gates |
+| `graph/` | The loop graph — five loops, three gates |
 | `tools/` | Pre-publish validator and its regression test |
 | `.claude/skills/pre-publish-audit/` | The review procedure |
 
