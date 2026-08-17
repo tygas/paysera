@@ -1,275 +1,330 @@
 ---
 loop: A
 name: Domain Expert Interviews
-goal: Suprasti pardavėjo/pirkėjo kelią ir problemas realiame kontekste
+goal: Suprasti pardavėjo ir pirkėjo kelią bei jo trukdžius realiame kontekste
 category: Research
-duration_days: 14
-parallel_with: [B, C, D]
+plan_source: graph/plan.json
+start_day: P7
+end_day: P20
+parallel_with: [C, D]
+gated_by: [G1]
+gate_note: >-
+  Šis loop'as tvarko fizinių asmenų duomenis (kontaktai iš viešų šaltinių,
+  pokalbių įrašai). Jis nestartuoja, kol Loop-B agentas `legal_basis_review`
+  neuždaro G1 (P6 pabaiga). v1.0 versijoje šis loop'as startavo P1 ir siuntė
+  laiškus nuo P4 — teisinis pagrindas tuo metu dar nebuvo apibrėžtas.
 
 agents:
   - name: find_contacts
-    type: web_search + linkedin
+    type: web_search + manual_review
+    start_day: P7
+    end_day: P9
+    data_class: public_personal
+    depends_on: []
+    requires_gate: [G1]
     prompt: |
-      Surask 15–20 žmonių iš šių šaltinių, kurie NESENIAI
-      pardavė arba pirko naudotą telefoną/nešiojamąjį kompiuterį:
+      Surask 15–20 žmonių, kurie per pastarąsias 7–30 dienų Lietuvoje
+      pardavė arba pirko naudotą telefoną ar nešiojamąjį kompiuterį.
 
-      1. LinkedIn — "recently sold used phone" arba "bought refurbished laptop"
-      2. Facebook Groups — Lietuvos skelbimų grupės
-      3. Foruma.lt — "parduota elektronika" skyrius (>7 days, <30 days)
-      4. TikTok — #telefono_pardavimas / #kompas_parduodu
+      ŠALTINIAI — tik tie, kuriuos G1 sprendime Legal įvardijo kaip leistinus.
+      Numatytas sąrašas, kurį reikia patvirtinti:
 
-      Išrašyk kontaktus:
-      - vardas (arba handle)
-      - platform
-      - email / phone / DM link
-      - grubul indai kai pardavimas/pirkinys (7–30 dienų atgal)
+      1. skelbimu.lt / skelbiu.lt viešos pardavėjų skelbimų istorijos
+      2. Facebook „perku–parduodu" grupės (LT elektronikos grupės)
+      3. forumas.lt elektronikos pardavimo skyrius
+      4. Asmeninis ir Paysera vidinis tinklas (rekomendacijos)
 
-      Tikslas: 15 skambučio naudotojų, kurie tiesiai patvirtino pardavimą/pirkim.
+      NENAUDOJAME:
+      - LinkedIn kaip naudotų telefonų pardavimo kanalo. v1.0 čia ieškojo
+        užklausos „recently sold used phone" LinkedIn'e — Lietuvos naudotos
+        elektronikos pardavėjai ten savo sandorių neskelbia.
+      - TikTok hashtag'ų kaip pirminio kanalo — nepatikrinta prielaida.
+      Jei G1 leidžia, juos galima laikyti atsarginiu kanalu, bet ne pirmu.
+
+      Kiekvienam kontaktui užrašyk:
+      - vardas arba viešas vardas platformoje
+      - platforma
+      - kontakto būdas (viešas profilis / žinutė platformoje)
+      - apytikslė sandorio data (7–30 dienų atgal)
+      - sandorio tipas: pardavė / pirko
+      - prekės kategorija
+
+      RIBOS, kurių laikomasi be išimčių:
+      - Renkame tik tai, ko reikia susisiekti. Ne visą profilį.
+      - Nesaugome duomenų už G1 nustatyto saugojimo termino ribų.
+      - Automatinis rinkimas naudojamas tik ten, kur G1 jį leidžia.
 
     input:
-      category: "used_electronics"
+      category: used_electronics
+      market: LT
       min_days_since_activity: 7
       max_days_since_activity: 30
-      target_count: 15
+      target_count: 20
 
     output_schema: |
       - name: string
-      - platform: enum[LinkedIn, Facebook, Foruma.lt, TikTok]
-      - contact_method: email | phone | dm_link
+      - platform: enum[skelbiu.lt, facebook_group, forumas.lt, referral]
+      - contact_method: "platform_message" | "email" | "phone"
       - contact_value: string
       - activity_date: YYYY-MM-DD
       - activity_type: "sold" | "bought"
       - product_category: "phone" | "laptop" | "other_electronics"
-      - call_confirmation: bool (optional — jei jau susisiekei)
+      - source_permitted_by_G1: bool
 
     success_criteria:
-      critical: "n >= 12"
-      required: "n >= 15"
-      nice_to_have: "n >= 20"
+      minimum: 15
+      target: 20
+      stretch: 30
 
-    estimated_duration: 3 days
-    dependencies: none
-    owner: "You (Claude AI assistant)"
+    owner: "Eimantas + Claude (paieška, rankinė peržiūra)"
 
+  # -------------------------------------------------------------------------
   - name: schedule_calls
-    type: outreach + calendar_sync
+    type: outreach + calendar
+    start_day: P9
+    end_day: P12
+    data_class: public_personal
+    depends_on: [find_contacts]
+    requires_gate: [G1]
     prompt: |
-      Iš find_contacts() output naudotojams siųsk:
+      Siųsk kvietimus naudodamas TIK G1 patvirtintą formuluotę.
+      Žemiau — juodraštis, teikiamas Legal patvirtinti; publikuojama versija
+      yra ta, kurią grąžina G1.
 
-      EMAIL TEMPLATE:
+      KVIETIMO JUODRAŠTIS (LT):
       ---
-      Tema: Greitai jūsų klausimas apie [iPhone 13] pardavimą
+      Tema: Klausimas apie jūsų neseniai parduotą [produktas]
 
-      Sveiki [vardas],
+      Sveiki,
 
-      Mačiau, kad neseniai pardavėte [produktas]. Paysera
-      rengia naują pardavimo platformą ir ieško išmintingų
-      žmonių, kurie dalyvauto 45 min pasikalbėjime apie
-      jūsų patirtį — nuo nuotraukos iki mokėjimo.
+      esu Eimantas, dirbu prie naujos Paysera skelbimų platformos.
+      Mačiau, kad neseniai pardavėte [produktas]. Ieškau žmonių, kurie
+      sutiktų 45 min papasakoti apie savo patirtį — nuo skelbimo sukūrimo
+      iki mokėjimo ir pristatymo.
 
-      Gausit [incentive — pvz. 10 EUR cashback] ir padėsite
-      milijonams išvengti sukčiavimo.
+      Už pokalbį atsilyginame 20 EUR.
 
-      Laisvieji šneliai: [calendar link].
+      Pokalbis įrašomas tik jums sutikus; įrašą saugome [G1 nustatytas
+      terminas] ir po to ištriname. Sutikimą galite atšaukti bet kada.
 
-      Dėkui,
+      Laisvi laikai: [kalendoriaus nuoroda]
+
+      Pagarbiai,
       Eimantas
       ---
 
-      Seka:
-      1. Email siuntimas (batched, 3 per dieną)
-      2. 48h po email — reminder (jei neatsako)
-      3. Handbook — backup — jei jie norėtų Zoom/Phone
+      SEKA:
+      1. Kvietimas (ne daugiau kaip 5 per dieną — kad spėčiau atsakyti)
+      2. Po 48 h — vienas priminimas, jei neatsako
+      3. Antro priminimo nėra. Neatsakymas yra atsakymas.
 
-      Tikslas: 12–15 patvirtintų skambučių per 7 dienas.
+      SKATINIMO DYDIS NEKINTA tyrimo eigoje. Jei nepavyksta surinkti
+      pokalbių, plečiame kanalus ir laiką, o ne didiname sumą: keisdami
+      kainą viduryje tyrimo iškraipome imtį ir nevienodai elgiamės su
+      anksčiau sutikusiais. Bet koks pakeitimas — per G1 iš naujo.
+
+      Tikslas: 12 patvirtintų pokalbių.
 
     input:
-      contacts_list: "[from find_contacts output]"
-      email_template: "call_request_with_incentive"
-      confirmation_method: "calendar_booking | email_reply"
+      contacts_list: "[iš find_contacts]"
+      outreach_text: "[iš G1: approved_outreach_text_lt]"
+      consent_text: "[iš G1: approved_consent_text]"
+      incentive_eur: 20
       reminder_delay_hours: 48
+      max_reminders: 1
+      daily_send_cap: 5
 
     output_schema: |
       - contact_id: string
       - scheduled_date: YYYY-MM-DD HH:MM
-      - confirmation_status: "confirmed" | "pending" | "declined"
-      - call_recording_consent: bool
+      - confirmation_status: "confirmed" | "pending" | "declined" | "no_response"
+      - recording_consent: bool
+      - consent_recorded_at: YYYY-MM-DD
       - timezone: string
       - preferred_language: "lt" | "en"
 
     success_criteria:
-      critical: ">= 10 confirmed calls"
-      required: ">= 12 confirmed calls"
-      nice_to_have: ">= 15 confirmed calls + video option"
+      minimum: 10
+      target: 12
+      stretch: 15
 
-    estimated_duration: 7 days (calls spread across DAY 4–12)
-    dependencies: "find_contacts COMPLETE"
-    owner: "You"
+    owner: "Eimantas"
 
+  # -------------------------------------------------------------------------
   - name: conduct_interviews
-    type: zoom_recording + note_taking
+    type: recorded_call + notes
+    start_day: P12
+    end_day: P18
+    data_class: public_personal
+    depends_on: [schedule_calls]
+    requires_gate: [G1]
     prompt: |
-      Skambinti pagal `schedule_calls` grafiką. Kiekvieno pokalbio struktūra:
+      Vesk pokalbius pagal `schedule_calls` grafiką.
+      Planuojama trukmė 45 min; trumpesnis nei 30 min pokalbis į skaičių
+      neįskaičiuojamas.
 
-      INTRO (5 min):
-      - Pristatymas, GDPR + recording consent
-      - "Norime suprasti, kaip jūs pardavėte [produktą]"
+      ĮŽANGA (5 min):
+      - Prisistatymas, tikslas
+      - Įrašymo sutikimas ŽODŽIU IR ĮRAŠE, prieš pradedant įrašinėti turinį
+      - Priminimas: kiek laiko saugosime ir kaip atšaukti sutikimą
+      - Jei sutikimo nėra — pokalbis vyksta, bet be įrašo, tik užrašai
 
-      PURCHASING / SELLING (15–20 min):
-      - Kur radote skelbimą / kaip paskelbeide? (platform friction?)
-      - Kaip susitarėte su pirkėju / pardavėju?
-      - Kaip atsisakė mokėti / kaip pasiūlėte kainą?
-      - Kokią informaciją norėjote, bet jos nebuvo?
+      PARDAVIMAS / PIRKIMAS (15–20 min):
+      - Kur ir kaip paskelbėte skelbimą? Kas užtruko ilgiausiai?
+      - Kaip susitarėte su kita puse?
+      - Kaip nustatėte kainą? Su kuo lyginote?
+      - Kokios informacijos trūko?
 
-      PAYMENT & LOGISTICS (10–15 min):
-      - Kaip atsiskaitė? (cash, bank transfer, trusted payment?)
-      - Ar yra baimės, jog pinigai nesugrįš / prekė nepasikels?
-      - Kiek laiko prireikė pristatyti / gauti?
+      MOKĖJIMAS IR PRISTATYMAS (10–15 min):
+      - Kaip atsiskaitėte? (grynais, pavedimu, kita)
+      - Ar bijojote, kad negausite pinigų arba prekės?
+      - Kiek užtruko pristatymas?
 
-      TRUST & FRAUD (5–10 min):
-      - Ar kada norėjote susitikti asmeniškai?
-      - Ar pasitikėjote pardavėju / pirkėju nuo pirmo pokalbio?
-      - Ar žinote apie sukčiavimą / rūpestingai grį?
+      PASITIKĖJIMAS IR SUKČIAVIMAS (5–10 min):
+      - Ar norėjote susitikti gyvai? Kodėl?
+      - Kas jums sukėlė įtarimą arba, priešingai, pasitikėjimą?
+      - Ar susidūrėte su bandymu apgauti?
 
-      CLOSE (5 min):
-      - Kas jums sutrukdė / padėjo daugiausia?
-      - Ką pasiūlytumete tokiam produktui?
+      PABAIGA (5 min):
+      - Kas labiausiai trukdė? Kas padėjo?
+      - Ko tikėtumėtės iš tokios platformos?
 
-      OUTPUT: Video recording (transcribed) + markdown notes
+      TAISYKLĖ UŽRAŠAMS: citata užrašuose = tai, ką žmogus tikrai pasakė.
+      Perfrazavimas žymimas kaip perfrazavimas. Nesukuriame „tipinės citatos".
 
     input:
-      scheduled_calls: "[from schedule_calls output]"
-      recording_tool: "Zoom native OR Riverside.fm (with transcription)"
-      template: "structured_interview_checklist"
+      scheduled_calls: "[iš schedule_calls]"
+      recording_tool: "[G1 patvirtinta priemonė]"
+      template: structured_interview_checklist
 
     output_schema: |
       - call_id: string
-      - contact_name: string
-      - recording_url: string
-      - transcript_text: string (auto-generated, hand-corrected)
+      - contact_ref: string (pseudonimizuotas)
+      - recording_url: string | null
+      - recording_consent: bool
+      - transcript_text: string
       - notes_markdown: string
-      - topics_covered: ["platform_friction", "payment", "trust", "logistics", ...]
-      - key_quotes: [string array, best 3–5 excerpts]
+      - topics_covered: [platform_friction, payment, trust, logistics, fraud, verification]
+      - key_quotes: [ {text: string, verbatim: bool} ]
       - duration_minutes: integer
       - follow_up_needed: bool
 
     success_criteria:
-      critical: ">= 8 calls completed, >= 4 topics per call"
-      required: ">= 12 calls, >= 5 topics per call"
-      nice_to_have: ">= 15 calls, 6+ topics, video highlights captured"
+      minimum: "10 pokalbių, >= 4 temos kiekviename"
+      target: "12 pokalbių, >= 5 temos"
+      stretch: "15 pokalbių, >= 6 temos"
 
-    estimated_duration: 10 days (DAY 4–14, spread)
-    dependencies: "schedule_calls CONFIRMED"
-    owner: "You"
+    owner: "Eimantas"
 
+  # -------------------------------------------------------------------------
   - name: extract_insights
     type: data_synthesis
+    start_day: P18
+    end_day: P20
+    data_class: public_personal
+    depends_on: [conduct_interviews]
+    requires_gate: [G1]
     prompt: |
-      Iš `conduct_interviews` output'ų (transcripts + notes):
+      Iš `conduct_interviews` transkriptų ir užrašų.
 
-      1. TEMA PO TEMAI, iš 12+ pokalbių ištraukti dažniausias problemas:
+      1. TEMOS. Kiekvienai temai:
+         - kiek pokalbių ją paminėjo (tikras skaičius iš tikro N)
+         - 2–3 pažodinės citatos su pokalbio ID
+         - sunkumo įvertinimas
 
-         Platform friction:
-         - "where did you find the listing?" → platforms used (OLX, Paysera, FB)
-         - "how long to find the right buyer/seller?" → time_to_match metric
-         - Grėsmė: Jei visi sako "I googled + found external link",
-           tai per nuorodą nukreipti per Paysera yra problema
+         Nagrinėjamos sritys:
+         - Platformos trukdžiai: kur skelbė, kiek užtruko, kas erzino
+         - Mokėjimo pasitikėjimas: ko bijojo, ką naudotų
+         - Pristatymas ir sukčiavimas: kaip tikrino būklę, ar nukentėjo
+         - Pasitikėjimo signalai: kas privertė pasitikėti
 
-         Payment trust:
-         - "did you fear the buyer won't pay?" → payment_risk_perception
-         - "would you use escrow / protected payment?" → willingness_for_safeguard
-         - Grėsmė: Jei > 50% bijo, product reikalinga guardrail
+      2. KRYŽMINIAI DĖSNINGUMAI:
+         - Kas kartojasi daugumoje pokalbių → product_must_have
+         - Kas pasitaiko pavieniui → nice_to_have
+         - Kas nepasitaiko visai → out_of_scope
 
-         Logistics & fraud:
-         - "how did you verify the item's condition?" → verification_method
-         - "did you receive the package OK?" → fraud_incident_count
-         - "would you recognize a scammer upfront?" → risk_literacy
+      3. PERSONOS JUODRAŠTIS iš tikrų pokalbių, ne iš prielaidų.
 
-         Trust signals:
-         - "what made you trust this person?" → trust_triggers
-         - Klausimas: Tapatybė? Kainos history? Reviews?
-
-      2. CROSS-CALL PATTERNS:
-         - Kuri problema pikami keletą kartų? → product_must_have
-         - Kuri problema viena dvi kartų? → nice_to_have
-         - Kuri problema nulio kartų? → out_of_scope
-
-      3. PERSONA DRAFT:
-         Iš pokalbių ~ sukurti draft persona:
-         "Repeat seller, 35–50, pasitiki Paysera, bet nori
-         fast checkout ir disputes atsigynimo"
-
-      OUTPUT: Structured JSON + Markdown summary
+      DRAUDIMAI:
+      - Nerašyk temos, kurios nėra transkripte.
+      - `mentions` privalo sutapti su tikru pokalbių skaičiumi. Jei įvyko
+        11 pokalbių, negali atsirasti „12/15 mentions".
+      - Kiekvienas skaičius išvestyje turi turėti `denominator` — iš kelių.
 
     input:
-      transcripts: "[from conduct_interviews output]"
-      templates:
-        - platform_friction_questions
-        - payment_trust_questions
-        - logistics_fraud_questions
-        - trust_signals_questions
+      transcripts: "[iš conduct_interviews]"
 
     output_schema: |
       themes:
-        - name: string (e.g., "payment_trust")
+        - name: string
           mentions: integer
-          representative_quotes: [string]
+          denominator: integer   # privaloma: iš kelių pokalbių
+          representative_quotes: [ {text: string, call_id: string, verbatim: true} ]
           severity: "critical" | "high" | "medium" | "low"
-
       persona_draft:
         name: string
         age_range: string
         seller_type: string
         key_pain_points: [string]
         trust_triggers: [string]
-        willingness_for_safeguard: bool
-
-      product_implications: [string]
+        derived_from_calls: integer
+      product_implications: [ {implication: string, evidence_call_ids: [string]} ]
 
     success_criteria:
-      critical: "themes extracted from >= 8 calls"
-      required: "themes from >= 12 calls + persona draft"
-      nice_to_have: "A/B personas (repeat vs first-time seller)"
+      minimum: "temos iš 10 pokalbių"
+      target: "temos iš 12 pokalbių + personos juodraštis"
+      stretch: "dvi personos (pakartotinis vs pirmą kartą parduodantis)"
 
-    estimated_duration: 3 days (DAY 12–14)
-    dependencies: "conduct_interviews >= 8 COMPLETE"
-    owner: "You (synthesis) + Claude AI (pattern detection)"
+    owner: "Eimantas (validacija) + Claude (dėsningumų paieška)"
 
 exit_conditions:
   completion:
-    - metric: "interview_count"
-      critical: ">= 12"
-      required: ">= 15"
-      nice_to_have: ">= 20"
+    - metric: contacts_identified
+      minimum: 15
+      target: 20
+      stretch: 30
 
-    - metric: "topics_per_interview"
-      critical: ">= 4 (platform, payment, logistics, trust)"
-      required: ">= 5"
-      nice_to_have: ">= 6 (add fraud, verification)"
+    - metric: interviews_completed
+      minimum: 10
+      target: 12
+      stretch: 15
+      source: "Paysera-atsakymas.md — „Pakalbinčiau 10–15 neseniai pardavusių ar pirkusių žmonių“"
 
-    - metric: "transcript_quality"
-      critical: "80% word accuracy (auto transcription acceptable)"
-      required: "95% accuracy (hand-corrected)"
-      nice_to_have: "100% + timestamps"
+    - metric: interview_minutes
+      minimum: 30
+      target: 45
+      stretch: 60
 
-    - metric: "theme_saturation"
-      definition: "no new themes found in last 3 consecutive interviews"
-      critical: "FALSE → keep going"
-      required: "TRUE → sufficient data"
+    - metric: topics_per_interview
+      minimum: 4
+      target: 5
+      stretch: 6
 
-    - metric: "persona_draft"
-      critical: "drafted from >= 5 calls"
-      required: "validated across >= 10 calls"
+    - metric: transcript_accuracy_pct
+      minimum: 80
+      target: 95
+      stretch: 100
+
+    - metric: theme_saturation
+      definition: "paskutiniuose 3 pokalbiuose neatsirado naujų temų"
+      required_for_target: true
+
+  binary_requirements:
+    - id: recording_consent
+      description: "Kiekvienas įrašas turi užfiksuotą sutikimą prieš įrašymą"
+      substitute_allowed: false
 
   timeline:
-    deadline: "DAY 14 23:59 UTC"
-    warning_threshold: "DAY 12 18:00 UTC — if not >= 10 calls scheduled"
-    fail_threshold: "DAY 15 09:00 UTC — if not >= 8 calls complete"
+    start_day: P7
+    deadline: "P20 pabaiga"
+    warning_threshold: "P12 — jei patvirtinta < 8 pokalbių"
 
   escalation:
     if_behind_schedule: |
-      - DAY 8: < 5 calls scheduled → launch "parallel call 2"
-        (different channel: Slack communities, Reddit, YouTube comments)
-      - DAY 11: < 8 calls completed → offer 2x incentive (20 EUR)
-      - DAY 13: < 10 calls completed → extend Loop-A to DAY 17,
-        compress Loop-E preparation
+      - P12: < 8 patvirtintų pokalbių → plečiame kanalus (papildomos FB grupės,
+        rekomendacijos per Paysera vidinį tinklą), NE didiname skatinimo.
+      - P15: < 8 įvykusių pokalbių → trumpiname iki 30 min formato ir
+        keliame prioritetą pardavėjams (ne pirkėjams).
+      - P18: < 10 įvykusių pokalbių → Loop-A pabaiga slenka į P22,
+        Loop-E startas slenka į P23, CEO sprendimas — į P29.
+        Loop-E netrumpinamas: trumpinama apimtis, o ne peržiūra.

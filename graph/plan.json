@@ -1,0 +1,496 @@
+{
+  "$comment": [
+    "SINGLE SOURCE OF TRUTH for the Paysera Classifieds pilot loop graph.",
+    "Every day number, agent name, threshold and gate in README.md, INDEX.md,",
+    "the loop-*.yaml files, exit-conditions.json and pilot-brief-template.md is",
+    "derived from this file. `node tools/validate-graph.mjs` fails the build if",
+    "any document drifts from it.",
+    "",
+    "TWO CLOCKS. The earlier version of this graph used a single 'DAY n' clock for",
+    "both the 30-day preparation window and the 30-day live pilot, which made",
+    "'DAY 30' mean two different things in two different documents. Days are now",
+    "explicitly namespaced:",
+    "  P1..P30  = preparation window (this loop graph)",
+    "  L1..L30  = live concierge pilot (starts the day after P30)",
+    "  L31+     = post-pilot roadmap"
+  ],
+
+  "schema_version": "2.0.0",
+  "last_updated": "2026-08-16",
+  "supersedes": "1.0.0 (2026-08-11) — see AUDIT-graph-2026-08-16.md",
+
+  "pilot": {
+    "name": "Paysera Classifieds concierge pilot",
+    "category": "used_electronics_phones_laptops",
+    "prep_window_days": 30,
+    "live_pilot_days": 30,
+    "prep_start_date": "TBD",
+    "live_start_date": "TBD (= prep_start_date + 30d)",
+    "status": "planning",
+    "market": "LT",
+    "source_of_scope": "Task.md (K. Noreika letter) + Paysera-atsakymas.md"
+  },
+
+  "terminology": {
+    "$comment": [
+      "v1.0 used the columns 'Kritinis | Būtina | Pageidautina'. Their meaning was",
+      "inverted between the count rows (critical = lowest bar) and the delay rows",
+      "(critical = latest date), so the same word meant 'floor' in one row and",
+      "'ceiling' in the next. Replaced by three unambiguous levels."
+    ],
+    "minimum": "Below this the loop is FAILED. Not a soft target. Used only when direction = higher_better.",
+    "maximum": "Above this the loop is FAILED. Used only when direction = lower_better.",
+    "target": "The planned outcome. Loop is COMPLETE at this level.",
+    "stretch": "Better than planned. Never a reason to extend the timeline.",
+    "direction": [
+      "Every threshold declares its direction, because the v1.0 inversion came back.",
+      "exit-conditions.json carried `hallucination_rate_pct: minimum 5 / target 0`",
+      "with a prose note explaining that minimum meant ceiling in that one row —",
+      "which is the same word meaning floor in one row and ceiling in the next, i.e.",
+      "the defect this block says was removed. measurement_definitions carried the",
+      "same inversion for listing_time_minutes (minimum 10 / target 5).",
+      "",
+      "higher_better  → minimum <= target <= stretch. The metric may not use `maximum`.",
+      "lower_better   → maximum >= target >= stretch. The metric may not use `minimum`.",
+      "Check S2 enforces this across plan.json thresholds, measurement_definitions",
+      "and exit-conditions.json."
+    ]
+  },
+
+  "gates": {
+    "G1": {
+      "name": "lawful_basis_for_personal_data",
+      "owner_loop": "loop_b",
+      "satisfied_by_agent": "legal_basis_review",
+      "closes_end_of_day": 6,
+      "$comment": [
+        "REGULATED-ENTITY CONTROL. Paysera is a licensed EMI. No agent in this",
+        "graph may collect, query, enrich, store or contact a natural person -",
+        "customer or non-customer - before this gate is closed in writing by",
+        "Legal/DPO. In v1.0 Loop-D queried production transaction data and mailed",
+        "real customers from P3 while legal sign-off was only due on P14, and",
+        "INDEX.md stated 'Dependencies: None between loops'. That ordering is the",
+        "single most serious defect this revision fixes."
+      ],
+      "deliverables": [
+        "Documented lawful basis per processing purpose (GDPR Art. 6), separately for: (a) internal transaction-data query, (b) profile enrichment, (c) marketing/recruitment outreach, (d) interview recording.",
+        "Written confirmation that AML/KYC identity data is NOT reused for recruitment (purpose limitation, GDPR Art. 5(1)(b) + AML law).",
+        "DPIA screening decision (required / not required) with rationale.",
+        "Retention period + deletion procedure for research data.",
+        "Approved outreach and consent wording (LT/EN), approved incentive amounts.",
+        "Approved list of external sources that may lawfully be scraped/contacted."
+      ],
+      "blocks_agents": [
+        "loop_a.find_contacts",
+        "loop_a.schedule_calls",
+        "loop_a.conduct_interviews",
+        "loop_a.extract_insights",
+        "loop_d.query_paysera_transactions",
+        "loop_d.enrich_seller_profiles",
+        "loop_d.recruit_pilot_cohort",
+        "loop_d.analyze_cohort_profile",
+        "loop_e.synthesize_all_outputs",
+        "loop_e.create_persona",
+        "loop_e.draft_pilot_brief"
+      ],
+      "$blocks_agents_comment": [
+        "Loop-E's three customer_personal agents were added on 2026-08-16. They were",
+        "missing because loop.gated_by was a single value and Loop-E declared G2, so",
+        "the graph asserted that building personas and a brief out of customer data",
+        "was authorised by a commercial scope sign-off rather than by a lawful basis.",
+        "G2 approves what the pilot may do. G1 is the only thing that authorises",
+        "touching a natural person's data, in Loop-E as anywhere else."
+      ],
+      "blocks_loops": ["loop_a", "loop_d", "loop_e"],
+      "on_miss": "Loops A and D do not start. Loop-E and the CEO decision slip day-for-day. There is no 'proceed pending approval' path."
+    },
+    "G2": {
+      "name": "pilot_scope_sign_off",
+      "owner_loop": "loop_b",
+      "satisfied_by_agent": "map_to_pilot_scope",
+      "closes_end_of_day": 15,
+      "$comment": "Signed pilot boundaries: transaction cap, prohibited items, verification level, dispute SLA, escalation routing. Loop-E may not synthesise a brief that presents unsigned constraints as approved.",
+      "deliverables": [
+        "Signed pilot legal checklist (>= 15 rules).",
+        "Named approver + timestamp from legal@paysera or compliance@paysera.",
+        "Explicit list of constraints that remain OPEN, to be carried into the brief as open risks."
+      ],
+      "blocks_agents": [
+        "loop_e.synthesize_all_outputs",
+        "loop_e.create_persona",
+        "loop_e.generate_workflow_checklist",
+        "loop_e.draft_pilot_brief"
+      ],
+      "blocks_loops": ["loop_e"],
+      "on_miss": "Loop-E and the CEO presentation slip until G2 closes. Open items remain visible on page 1 after drafting resumes. The pilot does not launch."
+    },
+    "G3": {
+      "name": "publication_approval",
+      "owner_loop": null,
+      "satisfied_by_agent": null,
+      "satisfied_by": "CTO review AND Legal review of the drafted brief. Neither is an agent; both are named humans.",
+      "closes_end_of_day": 26,
+      "$comment": [
+        "ADDED 2026-08-16. Before this, `legal_review` and `cto_review` were binary",
+        "requirements inside loop_e with due_day 26 — one day after loop_e closes on",
+        "P25. A requirement due after its owner has finished has no owner, and days",
+        "P26-P30 carried three milestones with no loop, no agent and no exit",
+        "conditions attached to them.",
+        "",
+        "This gate exists because it is the repository's own founding rule:",
+        "generation and publication are two separate steps. The brief being drafted",
+        "is not the brief being approved. G3 is what separates them."
+      ],
+      "deliverables": [
+        "CTO review recorded: technical feasibility of the pilot as scoped.",
+        "Legal review recorded: no untagged claims, no unapproved capability described as existing, G2 open items present on page 1.",
+        "Named reviewer + date for each. 'Reviewed' without a name is not a review."
+      ],
+      "blocks_agents": [],
+      "blocks_loops": [],
+      "blocks": ["ceo_decision"],
+      "on_miss": "The CEO presentation moves to a later date. A brief Legal has not reviewed is not presented. Being behind schedule buys a later date, never a skipped review."
+    }
+  },
+
+  "data_classes": {
+    "none": "No personal data. Internal policy documents, own devices, synthetic or licensed sample data.",
+    "public_personal": "Personal data from public sources (marketplace seller handles, forum posts). Requires G1.",
+    "customer_personal": "Paysera customer data from production systems. Requires G1.",
+    "customer_special": "AML/KYC, identity-verification and payment-dispute records. Requires G1 AND an explicit purpose-limitation carve-out; default is NOT AVAILABLE for product research."
+  },
+
+  "loops": {
+    "loop_a": {
+      "name": "Domain Expert Interviews",
+      "goal": "Understand the seller/buyer journey and its friction in real context.",
+      "start_day": 7,
+      "end_day": 20,
+      "gated_by": ["G1"],
+      "depends_on_loops": [],
+      "$depends_on_loops_comment": "Empty is correct: Loop-A waits on gate G1, not on Loop-B finishing. A gate dependency is expressed by `gated_by`; `depends_on_loops` means 'that loop must be COMPLETE before this one starts'. Conflating the two would make Loop-A wait until P15.",
+      "agents": [
+        { "id": "find_contacts",      "start_day": 7,  "end_day": 9,  "data_class": "public_personal",  "depends_on": [] },
+        { "id": "schedule_calls",     "start_day": 9,  "end_day": 12, "data_class": "public_personal",  "depends_on": ["find_contacts"] },
+        { "id": "conduct_interviews", "start_day": 12, "end_day": 18, "data_class": "public_personal",  "depends_on": ["schedule_calls"] },
+        { "id": "extract_insights",   "start_day": 18, "end_day": 20, "data_class": "public_personal",  "depends_on": ["conduct_interviews"] }
+      ],
+      "thresholds": {
+        "contacts_identified":   { "direction": "higher_better", "minimum": 15, "target": 20, "stretch": 30 },
+        "interviews_completed":  { "direction": "higher_better", "minimum": 10, "target": 12, "stretch": 15,
+          "$source": "Paysera-atsakymas.md: 'Pakalbinčiau 10–15 neseniai pardavusių ar pirkusių žmonių'. v1.0 said 15–20, which contradicted the letter it was supposed to implement." },
+        "interview_minutes":     { "direction": "higher_better", "minimum": 30, "target": 45, "stretch": 60 },
+        "topics_per_interview":  { "direction": "higher_better", "minimum": 4,  "target": 5,  "stretch": 6 },
+        "transcript_accuracy_pct": { "direction": "higher_better", "minimum": 80, "target": 95, "stretch": 100 },
+        "theme_saturation":      { "direction": "binary", "definition": "No new themes appeared in the last 3 consecutive interviews.", "required_for_target": true,
+          "$comment": "Tracked in exit-conditions.json since v2.0 but never defined here, so nothing constrained it. Not a count: it is a stopping condition on the interview series." }
+      },
+      "incentive_eur": 20,
+      "outputs": [
+        "graph/output/loop-a/contacts.csv",
+        "graph/output/loop-a/call_schedule.json",
+        "graph/output/loop-a/transcripts/",
+        "graph/output/loop-a/insights.json"
+      ]
+    },
+
+    "loop_b": {
+      "name": "Legal & Compliance Bounds",
+      "goal": "Establish the lawful basis for the research itself (G1), then the pilot's operating boundaries (G2).",
+      "start_day": 1,
+      "end_day": 15,
+      "gated_by": [],
+      "depends_on_loops": [],
+      "agents": [
+        { "id": "extract_compliance_docs",     "start_day": 1,  "end_day": 3,  "data_class": "none", "depends_on": [] },
+        { "id": "legal_basis_review",          "start_day": 3,  "end_day": 6,  "data_class": "none", "depends_on": ["extract_compliance_docs"], "closes_gate": "G1" },
+        { "id": "conduct_legal_consultation",  "start_day": 4,  "end_day": 10, "data_class": "none", "depends_on": ["extract_compliance_docs"] },
+        { "id": "map_to_pilot_scope",          "start_day": 11, "end_day": 15, "data_class": "none", "depends_on": ["conduct_legal_consultation"], "closes_gate": "G2" }
+      ],
+      "thresholds": {
+        "compliance_categories_covered": { "direction": "higher_better", "minimum": 3, "target": 5, "stretch": 5 },
+        "legal_meetings_completed":      { "direction": "higher_better", "minimum": 1, "target": 2, "stretch": 3 },
+        "pilot_checklist_rules":         { "direction": "higher_better", "minimum": 10, "target": 15, "stretch": 20 }
+      },
+      "binary_requirements": {
+        "g1_written_decision": "MUST. No substitute, no 'pending' state.",
+        "g2_signed_scope": "MUST before pilot launch. May be 'open' at CEO presentation only if listed as an open item on page 1."
+      },
+      "outputs": [
+        "graph/output/loop-b/compliance_extracts.json",
+        "graph/output/loop-b/legal_basis_decision.md",
+        "graph/output/loop-b/legal_consultation_notes.md",
+        "graph/output/loop-b/pilot_checklist.json",
+        "graph/output/loop-b/legal_sign_off.eml"
+      ]
+    },
+
+    "loop_c": {
+      "name": "Photo-to-Listing Workflow",
+      "goal": "Test the AI workflow from photo to structured listing and price range.",
+      "start_day": 1,
+      "end_day": 15,
+      "gated_by": [],
+      "depends_on_loops": [],
+      "$comment": "Runs from P1 without a gate precisely because it uses no personal data: own devices, synthetic images, and licensed sample data only. Marketplace photos of real listings are personal data + third-party content and are excluded.",
+      "agents": [
+        { "id": "collect_test_photos",      "start_day": 1,  "end_day": 3,  "data_class": "none", "depends_on": [] },
+        { "id": "run_photo_to_listing_ai",  "start_day": 4,  "end_day": 12, "data_class": "none", "depends_on": ["collect_test_photos"] },
+        { "id": "quality_check_outputs",    "start_day": 13, "end_day": 15, "data_class": "none", "depends_on": ["run_photo_to_listing_ai"] }
+      ],
+      "thresholds": {
+        "test_photos":         { "direction": "higher_better", "minimum": 8, "target": 10, "stretch": 12 },
+        "photos_with_output":  { "direction": "higher_better", "minimum": 8, "target": 10, "stretch": 12 },
+        "quality_score_of_10": { "direction": "higher_better", "minimum": 6, "target": 7,  "stretch": 8 },
+        "prompt_versions":     { "direction": "higher_better", "minimum": 2, "target": 3,  "stretch": 3 },
+        "hallucination_rate_pct": { "direction": "lower_better", "maximum": 5, "target": 0, "stretch": 0,
+          "definition": "Share of generated listings containing a specification the device does not have, measured against the human ground truth recorded before the run.",
+          "$comment": [
+            "PROMOTED HERE 2026-08-16. loop-c-photo-listing.yaml calls this the most",
+            "important safety indicator — a published listing asserting a spec the",
+            "device lacks is a misleading statement to a consumer on a regulated",
+            "platform. It existed only in exit-conditions.json: not in this file, not",
+            "in the YAML exit conditions, not a binary requirement, and absent from",
+            "every escalation rule, which escalated on quality score alone.",
+            "",
+            "Loop-C could therefore complete at target with every listing carrying",
+            "invented specifications. A metric that cannot fail anything is a note.",
+            "",
+            "It was also written `minimum 5 / target 0`, i.e. a 0% rate failed the",
+            "loop. It uses `maximum` now — see terminology.direction."
+          ] },
+        "prompt_version_selected": { "direction": "binary", "definition": "One prompt version is recommended, with the numbers and the sample-size caveat behind the recommendation.",
+          "$comment": "Present in the YAML exit conditions but in neither JSON file, which gave Loop-C three different metric sets across three documents." }
+      },
+      "outputs": [
+        "graph/output/loop-c/photos/",
+        "graph/output/loop-c/photo_index.csv",
+        "graph/output/loop-c/ai_outputs.json",
+        "graph/output/loop-c/quality_report.md",
+        "graph/output/loop-c/prompt_selection.json"
+      ]
+    },
+
+    "loop_d": {
+      "name": "Repeat Seller Pattern & Recruitment",
+      "goal": "Identify and recruit the first concierge cohort from existing Paysera sellers.",
+      "start_day": 7,
+      "end_day": 19,
+      "gated_by": ["G1"],
+      "depends_on_loops": [],
+      "agents": [
+        { "id": "query_paysera_transactions", "start_day": 7,  "end_day": 9,  "data_class": "customer_personal", "depends_on": [] },
+        { "id": "enrich_seller_profiles",     "start_day": 9,  "end_day": 11, "data_class": "customer_personal", "depends_on": ["query_paysera_transactions"] },
+        { "id": "recruit_pilot_cohort",       "start_day": 11, "end_day": 17, "data_class": "customer_personal", "depends_on": ["enrich_seller_profiles"] },
+        { "id": "analyze_cohort_profile",     "start_day": 18, "end_day": 19, "data_class": "customer_personal", "depends_on": ["recruit_pilot_cohort"] }
+      ],
+      "thresholds": {
+        "eligible_sellers":   { "direction": "higher_better", "minimum": 20, "target": 50, "stretch": 100 },
+        "profiles_enriched":  { "direction": "higher_better", "minimum": 12, "target": 20, "stretch": 20 },
+        "cohort_confirmed":   { "direction": "higher_better", "minimum": 4,  "target": 5,  "stretch": 7 },
+        "cohort_profile_documented": { "direction": "binary", "definition": "Cohort composition and categories documented, with the n=5 qualitative-sample caveat attached to every average.",
+          "$comment": "Present in the YAML exit conditions but in neither JSON file." }
+      },
+      "incentive_eur": 25,
+      "$incentive_comment": "One incentive value for the whole cohort. v1.0 escalation doubled the incentive mid-recruitment (20→40, 25→50). Changing price mid-study biases the sample and treats late responders differently; any change now requires re-approval under G1. Escalate by adding channels and time, not money.",
+      "outputs": [
+        "graph/output/loop-d/eligible_sellers.csv",
+        "graph/output/loop-d/enriched_profiles.json",
+        "graph/output/loop-d/recruitment_log.json",
+        "graph/output/loop-d/cohort_profile.json"
+      ]
+    },
+
+    "loop_e": {
+      "name": "Synthesis & Pilot Brief",
+      "goal": "Turn A+B+C+D outputs into one evidence-tagged pilot brief.",
+      "start_day": 21,
+      "end_day": 25,
+      "gated_by": ["G1", "G2"],
+      "$gated_by_comment": [
+        "G1 was added 2026-08-16. Loop-E declared G2 alone, and three of its four",
+        "agents carry data_class customer_personal. G2 is the pilot scope sign-off —",
+        "a commercial approval. It is not, and cannot be, the lawful basis for",
+        "processing a natural person's data. That is G1, in Loop-E exactly as in",
+        "Loops A and D.",
+        "",
+        "Check C1 passed this because it asked only whether the loop named SOME gate",
+        "that closed before the agent started. Any gate satisfied it. Ordering was",
+        "safe in practice (G1 closes P6, Loop-E starts P21), so this was a modelling",
+        "defect rather than a live violation — but the graph is meant to be the",
+        "control, and it recorded no dependency on G1 at all."
+      ],
+      "depends_on_loops": ["loop_a", "loop_b", "loop_c", "loop_d"],
+      "$depends_on_loops_comment": [
+        "ADDED 2026-08-16. Every depends_on in this file resolved inside its own",
+        "loop, and loop_e.synthesize_all_outputs — which consumes all four loops'",
+        "outputs — had depends_on: []. The graph had no edges between loops.",
+        "",
+        "The real dependency lived in two unvalidated places: a depends_on array in",
+        "exit-conditions.json and a depends_on_completion comment in the YAML. The",
+        "ordering that makes this a graph was held by nothing except P21 being",
+        "greater than P20."
+      ],
+      "agents": [
+        { "id": "synthesize_all_outputs",      "start_day": 21, "end_day": 22, "data_class": "customer_personal", "depends_on": [] },
+        { "id": "create_persona",              "start_day": 22, "end_day": 23, "data_class": "customer_personal", "depends_on": ["synthesize_all_outputs"] },
+        { "id": "generate_workflow_checklist", "start_day": 22, "end_day": 23, "data_class": "none",              "depends_on": ["synthesize_all_outputs"] },
+        { "id": "draft_pilot_brief",           "start_day": 23, "end_day": 25, "data_class": "customer_personal", "depends_on": ["synthesize_all_outputs", "create_persona", "generate_workflow_checklist"] }
+      ],
+      "thresholds": {
+        "loop_outputs_integrated": { "direction": "higher_better", "minimum": 4, "target": 4, "stretch": 4 },
+        "personas":                { "direction": "higher_better", "minimum": 1, "target": 1, "stretch": 3 },
+        "checklist_steps":         { "direction": "higher_better", "minimum": 6, "target": 6, "stretch": 6 },
+        "untagged_claims":         { "direction": "lower_better", "maximum": 0, "target": 0, "stretch": 0,
+          "definition": "Factual statements in the brief carrying no provenance tag. Zero is the only passing value." },
+        "tbd_count":               { "direction": "informational", "definition": "Count of [TBD] placeholders left in the brief.",
+          "$comment": "Deliberately has no threshold. A [TBD] is an honest answer; an invented number is not. Tracked so the reader knows how much is unfilled, never used to fail the loop." }
+      },
+      "binary_requirements": {
+        "provenance_complete": "MUST. Every factual statement in the brief carries a provenance tag. An untagged claim blocks the brief.",
+        "no_prewritten_conclusions": "MUST. No synthesis prompt states a finding the agent is meant to derive."
+      },
+      "$binary_requirements_comment": [
+        "legal_review and cto_review moved to gate G3 on 2026-08-16. They were held",
+        "here with due_day 26, one day after this loop closes on P25 — a requirement",
+        "due after its owner has finished. See gates.G3."
+      ],
+      "outputs": [
+        "graph/output/loop-e/synthesis.json",
+        "graph/output/loop-e/persona.md",
+        "graph/output/loop-e/workflow_checklist.md",
+        "graph/output/loop-e/pilot_brief.md"
+      ]
+    }
+  },
+
+  "milestones": [
+    { "day": 3,  "id": "compliance_docs_extracted", "label": "Compliance documents extracted" },
+    { "day": 6,  "id": "gate_g1",                   "label": "GATE G1 — lawful basis decided in writing" },
+    { "day": 15, "id": "gate_g2",                   "label": "GATE G2 — pilot scope signed; Loops B and C complete" },
+    { "day": 20, "id": "research_complete",         "label": "Loops A and D complete" },
+    { "day": 25, "id": "brief_drafted",             "label": "Pilot brief drafted" },
+    { "day": 26, "id": "gate_g3",                   "label": "GATE G3 — CTO + Legal review recorded; brief approved for presentation" },
+    { "day": 27, "id": "ceo_decision",              "label": "CEO go/no-go decision" },
+    { "day": 30, "id": "prep_complete",             "label": "Onboarding and platform prep complete" }
+  ],
+
+  "data_retention": {
+    "$comment": [
+      "ADDED 2026-08-16. G1's deliverables include a retention period and a deletion",
+      "procedure, and legal_basis_review outputs retention_days and deletion_owner.",
+      "No agent in any loop deleted anything, no milestone tracked it and no binary",
+      "requirement recorded it. The graph obtained permission to hold personal data",
+      "on a promise to delete it, and contained no node that kept the promise.",
+      "",
+      "The period and the owner are [TBD] because G1 has not run. Putting a number",
+      "here would be inventing the answer to the question G1 exists to ask."
+    ],
+    "retention_days": "[TBD — G1, loop_b.legal_basis_review]",
+    "deletion_owner": "[TBD — G1, loop_b.legal_basis_review]",
+    "deletion_due": "[TBD — derived from prep_start_date + retention_days once both are known]",
+    "covers": [
+      "graph/output/loop-a/contacts.csv",
+      "graph/output/loop-a/call_schedule.json",
+      "graph/output/loop-a/transcripts/",
+      "graph/output/loop-a/insights.json",
+      "graph/output/loop-d/eligible_sellers.csv",
+      "graph/output/loop-d/enriched_profiles.json",
+      "graph/output/loop-d/recruitment_log.json",
+      "graph/output/loop-d/cohort_profile.json",
+      "graph/output/loop-e/synthesis.json",
+      "graph/output/loop-e/persona.md",
+      "graph/output/loop-e/pilot_brief.md"
+    ],
+    "binary_requirement": "Deletion is executed on the due date and recorded with who did it and when. No substitute, no 'archived instead'.",
+    "$covers_comment": "Interview recordings are held in the tool G1 approves, not in graph/output/. They are covered by the same retention decision and deleted by the same owner."
+  },
+
+  "market_scope": {
+    "$comment": [
+      "v1.0 benchmarked a Lithuanian consumer-classifieds product against OLX, eBay",
+      "and Vinted, and sourced price comparables from an 'eBay/Vinted API'. The CEO",
+      "letter names the actual competitive set. Any competitor named in this repo",
+      "must appear in `primary` or be labelled with its `adjacent`/`excluded` reason."
+    ],
+    "country": "LT",
+    "primary_competitors": [
+      { "name": "skelbiu.lt",  "why": "General classifieds incl. electronics — named in Task.md." },
+      { "name": "autoplius.lt","why": "Auto vertical — named in Task.md; relevant for the L31+ auto expansion." },
+      { "name": "aruodas.lt",  "why": "Real-estate vertical — named in Task.md." },
+      { "name": "Facebook Marketplace / LT buy-sell groups", "why": "Where a large share of LT used-electronics trade actually happens." }
+    ],
+    "adjacent_not_competitors": [
+      { "name": "Vinted", "why": "LT-founded, but a fashion-resale marketplace. Useful as a trust/logistics design reference, not as a used-electronics competitor or a price comparable." }
+    ],
+    "excluded": [
+      { "name": "OLX",         "why": "Not a meaningful player in the LT market. Naming it as the incumbent signals the market was never checked." },
+      { "name": "eBay",        "why": "Marginal in LT; its prices are not a valid comparable for LT used electronics." },
+      { "name": "Craigslist",  "why": "Not present in LT." }
+    ],
+    "price_comparable_sources": {
+      "allowed_after_G1": ["skelbiu.lt public listings", "Facebook Marketplace public listings"],
+      "requires_legal_check": "Whether automated collection from these sources is permitted is a G1 deliverable, not an assumption.",
+      "not_allowed": ["eBay API", "Vinted API"]
+    }
+  },
+
+  "claim_policy": {
+    "$comment": "Prevents error category 1: invented facts inside a document that promised not to invent facts (Application-progress.md, 'Do not invent dates, metrics, team sizes, tools, ownership, or business outcomes').",
+    "rule": "Every quantitative or factual claim in a published document carries exactly one provenance tag.",
+    "tags": {
+      "[A:n]": "From Loop-A, n interviews. n must match the actual transcript count.",
+      "[B]": "From Loop-B, with the source document or the named approver.",
+      "[C]": "From Loop-C measurement, with the sample size.",
+      "[D]": "From Loop-D data query, with the query date.",
+      "[EXT:<url>]": "External public source. URL must resolve and must be dated.",
+      "[HYPOTHESIS]": "Not yet evidence. Must be phrased as a hypothesis, never in the past tense.",
+      "[TBD]": "Deliberately unfilled placeholder in a template."
+    },
+    "forbidden": [
+      "Numbers presented without a tag.",
+      "Quotation marks around a sentence no interviewee said.",
+      "A template shipped with example results that read as findings.",
+      "Pre-written conclusions inside an agent prompt ('Išvada: …') that the agent is meant to derive."
+    ]
+  },
+
+  "measurement_definitions": {
+    "sell_through_14d": {
+      "definition": "Share of activated listings that reach a confirmed completed transaction within 14 days.",
+      "source": "Paysera-atsakymas.md — primary metric.",
+      "direction": "higher_better",
+      "target": 0.5,
+      "minimum": 0.4,
+      "$caveat": "Baseline is each seller's own prior history, not a market average."
+    },
+    "recommendation_score": {
+      "definition": "Mean of 'How likely are you to recommend this to another seller?' on a 0–10 scale.",
+      "direction": "higher_better",
+      "target": 8,
+      "$comment": "v1.0 called this 'NPS ≥ 7/10'. NPS is a −100..+100 promoter-minus-detractor figure, not an x/10 score, and it is statistically meaningless at n=5. Renamed and rescaled."
+    },
+    "listing_time_minutes": {
+      "definition": "First photo upload to published listing.",
+      "direction": "lower_better",
+      "target": 5,
+      "maximum": 10,
+      "$comment": "Was `minimum: 10, target: 5`, which read literally as 'a 5-minute listing fails the metric' — the v1.0 floor/ceiling inversion the terminology block says was removed, sitting in the source of truth. Uses `maximum` now."
+    },
+    "ai_quality_score": {
+      "definition": "Human review of title + specs + clarity, 1–10, scored blind against ground truth.",
+      "direction": "higher_better",
+      "target": 7,
+      "minimum": 6
+    }
+  },
+
+  "pilot_constraints": {
+    "$comment": "v1.0 labelled a 1,500 EUR cap as 'the AML threshold'. It is not: it is a self-imposed pilot risk limit. Real regulatory thresholds are a Loop-B deliverable, not something this document may assert.",
+    "transaction_cap_eur": { "value": 1500, "nature": "pilot-imposed risk limit", "approved_by": "[TBD — G2]" },
+    "regulatory_thresholds": "[TBD — Loop-B, extract_compliance_docs + conduct_legal_consultation]",
+    "escrow_hold_days": { "value": 7, "nature": "HYPOTHESIS", "$comment": "Protected payment for consumer classifieds is a hypothesis pending legal/compliance validation (Paysera-atsakymas.md). It must never be described as an existing Paysera feature." },
+    "dispute_escalation_threshold_eur": { "value": 100, "nature": "[TBD — G2]" },
+    "liability_split": "[TBD — G2]"
+  }
+}

@@ -1,355 +1,290 @@
 {
+  "$comment": [
+    "DAILY TRACKING FILE. Structure and every threshold are derived from plan.json.",
+    "Run `node tools/validate-graph.mjs` after editing — it fails if this file",
+    "drifts from plan.json, README.md or INDEX.md.",
+    "",
+    "Days use the two-clock notation: P1..P30 = preparation, L1..L30 = live pilot."
+  ],
+
+  "schema_version": "2.0.0",
+  "derived_from": "graph/plan.json",
+  "last_updated": "2026-08-16",
+
   "pilot": {
-    "name": "Paysera Classifieds 30-Day Pilot",
+    "name": "Paysera Classifieds concierge pilot",
     "category": "used_electronics",
-    "duration_days": 30,
-    "pilot_start_date": "TBD",
-    "pilot_end_date": "TBD",
-    "status": "planning",
-    "last_updated": "2026-08-11"
+    "market": "LT",
+    "prep_window_days": 30,
+    "live_pilot_days": 30,
+    "prep_start_date": "TBD",
+    "live_start_date": "TBD",
+    "status": "planning"
+  },
+
+  "gates": {
+    "G1": {
+      "name": "lawful_basis_for_personal_data",
+      "owner": "loop_b.legal_basis_review",
+      "closes_end_of_day": 6,
+      "status": "pending",
+      "decided_by": null,
+      "decided_at": null,
+      "blocks_loops": ["loop_a", "loop_d", "loop_e"],
+      "deliverables_received": {
+        "lawful_basis_per_purpose": false,
+        "kyc_aml_reuse_decision": false,
+        "dpia_screening": false,
+        "retention_and_deletion": false,
+        "approved_outreach_text": false,
+        "permitted_external_sources": false
+      },
+      "no_bypass": "There is no 'proceed pending approval' state. Pending means blocked."
+    },
+    "G2": {
+      "name": "pilot_scope_sign_off",
+      "owner": "loop_b.map_to_pilot_scope",
+      "closes_end_of_day": 15,
+      "status": "pending",
+      "decided_by": null,
+      "decided_at": null,
+      "blocks_loops": ["loop_e"],
+      "open_items": []
+    },
+    "G3": {
+      "name": "publication_approval",
+      "owner": "CTO + Legal (named humans, not agents)",
+      "closes_end_of_day": 26,
+      "status": "pending",
+      "decided_by": null,
+      "decided_at": null,
+      "blocks_loops": [],
+      "blocks": ["ceo_decision"],
+      "deliverables_received": {
+        "cto_review": { "met": false, "reviewer": null, "date": null, "substitute_allowed": false },
+        "legal_review": { "met": false, "reviewer": null, "date": null, "substitute_allowed": false }
+      },
+      "no_bypass": "A brief Legal has not reviewed is not presented to the CEO. The alternative is a later date, never a skipped review.",
+      "$comment": "These two were binary requirements inside loop_e with due_day 26 — one day after loop_e closes on P25. A requirement due after its owner has finished has no owner."
+    }
   },
 
   "loop_a": {
     "name": "Domain Expert Interviews",
-    "status": "not_started",
-    "deadline": "DAY 14 23:59 UTC",
-    "warning_threshold": "DAY 12 18:00 UTC",
-    "fail_threshold": "DAY 15 09:00 UTC",
-    "exit_conditions": {
-      "interview_count": {
-        "critical": ">= 12",
-        "required": ">= 15",
-        "nice_to_have": ">= 20",
-        "current": 0,
-        "status": "not_started"
-      },
-      "topics_per_interview": {
-        "critical": ">= 4",
-        "required": ">= 5",
-        "nice_to_have": ">= 6",
-        "current": 0,
-        "status": "not_started"
-      },
-      "transcript_quality": {
-        "critical": "80% accuracy (auto)",
-        "required": "95% accuracy (corrected)",
-        "nice_to_have": "100% with timestamps",
-        "current": "N/A",
-        "status": "not_started"
-      },
-      "theme_saturation": {
-        "definition": "no new themes in last 3 consecutive interviews",
-        "critical": false,
-        "required": true,
-        "current": false,
-        "status": "not_started"
-      },
-      "persona_draft": {
-        "critical": "drafted from >= 5 calls",
-        "required": "validated across >= 10 calls",
-        "current": false,
-        "status": "not_started"
-      }
+    "status": "blocked_by_gate",
+    "gated_by": ["G1"],
+    "depends_on_loops": [],
+    "start_day": 7,
+    "end_day": 20,
+    "agents": {
+      "find_contacts":      { "start_day": 7,  "end_day": 9,  "status": "blocked_by_gate" },
+      "schedule_calls":     { "start_day": 9,  "end_day": 12, "status": "blocked_by_gate" },
+      "conduct_interviews": { "start_day": 12, "end_day": 18, "status": "blocked_by_gate" },
+      "extract_insights":   { "start_day": 18, "end_day": 20, "status": "blocked_by_gate" }
     },
-    "agents": [
-      "find_contacts",
-      "schedule_calls",
-      "conduct_interviews",
-      "extract_insights"
-    ],
-    "output_files": [
-      "graph/loop-a-interviews/output/contacts.csv",
-      "graph/loop-a-interviews/output/call_schedule.json",
-      "graph/loop-a-interviews/output/transcripts/",
-      "graph/loop-a-interviews/output/insights.json"
+    "metrics": {
+      "contacts_identified":     { "direction": "higher_better", "minimum": 15, "target": 20, "stretch": 30, "current": 0, "status": "not_started" },
+      "interviews_completed":    { "direction": "higher_better", "minimum": 10, "target": 12, "stretch": 15, "current": 0, "status": "not_started" },
+      "interview_minutes":       { "direction": "higher_better", "minimum": 30, "target": 45, "stretch": 60, "current": null, "status": "not_started" },
+      "topics_per_interview":    { "direction": "higher_better", "minimum": 4,  "target": 5,  "stretch": 6,  "current": 0, "status": "not_started" },
+      "transcript_accuracy_pct": { "direction": "higher_better", "minimum": 80, "target": 95, "stretch": 100, "current": null, "status": "not_started" },
+      "theme_saturation":        { "direction": "binary", "definition": "No new themes appeared in the last 3 consecutive interviews.", "required_for_target": true, "current": false, "status": "not_started" }
+    },
+    "binary_requirements": {
+      "recording_consent_before_recording": { "met": null, "substitute_allowed": false }
+    },
+    "incentive_eur": 20,
+    "outputs": [
+      "graph/output/loop-a/contacts.csv",
+      "graph/output/loop-a/call_schedule.json",
+      "graph/output/loop-a/transcripts/",
+      "graph/output/loop-a/insights.json"
     ],
     "escalation": {
-      "day_8_below_5_calls_scheduled": "Launch parallel call 2 (different channels)",
-      "day_11_below_8_completed": "Offer 2x incentive (20 EUR)",
-      "day_13_below_10_completed": "Extend to DAY 17, compress Loop-E"
+      "p12_under_8_confirmed": "Broaden channels and time. Do not raise the incentive.",
+      "p15_under_8_completed": "Switch to the 30-minute format; prioritise sellers over buyers.",
+      "p18_under_10_completed": "Loop-A ends P22, Loop-E starts P23, CEO decision P29. Review is not compressed."
     }
   },
 
   "loop_b": {
     "name": "Legal & Compliance Bounds",
     "status": "not_started",
-    "deadline": "DAY 14 23:59 UTC",
-    "warning_threshold": "DAY 12 18:00 UTC",
-    "fail_threshold": "DAY 16 09:00 UTC",
-    "exit_conditions": {
-      "compliance_categories_covered": {
-        "critical": ">= 2 (GDPR + Payment)",
-        "required": ">= 3 (add Items or Fraud)",
-        "nice_to_have": "all 5 (GDPR, Payment, Items, Fraud, Liability)",
-        "current": 0,
-        "status": "not_started"
-      },
-      "legal_meetings_completed": {
-        "critical": ">= 1 recorded + minutes",
-        "required": ">= 2 meetings + approval email",
-        "nice_to_have": ">= 3 with follow-ups",
-        "current": 0,
-        "status": "not_started"
-      },
-      "pilot_checklist_items": {
-        "critical": ">= 10 rules documented",
-        "required": ">= 15 rules + signed approval",
-        "nice_to_have": ">= 20 rules with enforcement code",
-        "current": 0,
-        "status": "not_started"
-      },
-      "legal_sign_off": {
-        "critical": "email from legal@paysera OR compliance@paysera",
-        "required": "email + explicit approval for pilot scope",
-        "current": false,
-        "status": "not_started"
-      }
+    "gated_by": [],
+    "depends_on_loops": [],
+    "start_day": 1,
+    "end_day": 15,
+    "agents": {
+      "extract_compliance_docs":    { "start_day": 1,  "end_day": 3,  "status": "not_started" },
+      "legal_basis_review":         { "start_day": 3,  "end_day": 6,  "status": "not_started", "closes_gate": "G1" },
+      "conduct_legal_consultation": { "start_day": 4,  "end_day": 10, "status": "not_started" },
+      "map_to_pilot_scope":         { "start_day": 11, "end_day": 15, "status": "not_started", "closes_gate": "G2" }
     },
-    "agents": [
-      "extract_compliance_docs",
-      "conduct_legal_consultation",
-      "map_to_pilot_scope"
-    ],
-    "output_files": [
-      "graph/loop-b-legal/output/compliance_extracts.json",
-      "graph/loop-b-legal/output/legal_consultation_notes.md",
-      "graph/loop-b-legal/output/pilot_checklist.json",
-      "graph/loop-b-legal/output/legal_sign_off.eml"
+    "metrics": {
+      "compliance_categories_covered": { "direction": "higher_better", "minimum": 3,  "target": 5,  "stretch": 5,  "current": 0, "status": "not_started" },
+      "legal_meetings_completed":      { "direction": "higher_better", "minimum": 1,  "target": 2,  "stretch": 3,  "current": 0, "status": "not_started" },
+      "pilot_checklist_rules":         { "direction": "higher_better", "minimum": 10, "target": 15, "stretch": 20, "current": 0, "status": "not_started" }
+    },
+    "binary_requirements": {
+      "g1_written_decision": { "due_day": 6,  "met": false, "substitute_allowed": false },
+      "g2_signed_scope":     { "due_day": 15, "met": false, "substitute_allowed": false }
+    },
+    "outputs": [
+      "graph/output/loop-b/compliance_extracts.json",
+      "graph/output/loop-b/legal_basis_decision.md",
+      "graph/output/loop-b/legal_consultation_notes.md",
+      "graph/output/loop-b/pilot_checklist.json",
+      "graph/output/loop-b/legal_sign_off.eml"
     ],
     "escalation": {
-      "day_10_no_response": "Escalate to CEO/Kostas",
-      "day_12_below_10_rules": "Extend DAY 15, compress Loop-E",
-      "day_14_no_sign_off": "Mark as pending, proceed with draft"
+      "p4_no_g1_meeting": "Escalate to CEO the same day. G1 blocks two of four loops.",
+      "p6_g1_not_closed": "Loops A and D do not start. Schedule slips day-for-day. Loop-C continues.",
+      "p12_under_10_rules": "Narrow the pilot scope rather than skip rules.",
+      "p15_g2_not_closed": "Loop-E and the CEO presentation slip until G2 closes. Open items remain visible on page 1 after drafting resumes; the pilot does not launch."
     }
   },
 
   "loop_c": {
     "name": "Photo-to-Listing Workflow",
     "status": "not_started",
-    "deadline": "DAY 14 23:59 UTC",
-    "warning_threshold": "DAY 10 18:00 UTC",
-    "fail_threshold": "DAY 16 09:00 UTC",
-    "exit_conditions": {
-      "test_photos_count": {
-        "critical": "n >= 8",
-        "required": "n = 10",
-        "nice_to_have": "n >= 12 with outliers",
-        "current": 0,
-        "status": "not_started"
-      },
-      "ai_output_generation": {
-        "critical": ">= 8 photos with outputs",
-        "required": "all 10 photos, 3 prompt versions",
-        "nice_to_have": "10 + A/B testing with real sellers",
-        "current": 0,
-        "status": "not_started"
-      },
-      "quality_review_complete": {
-        "critical": ">= 8 photos reviewed",
-        "required": "all 10 + metrics computed",
-        "nice_to_have": "10 + seller preference data",
-        "current": 0,
-        "status": "not_started"
-      },
-      "average_quality_score": {
-        "critical": ">= 6/10",
-        "required": ">= 7/10",
-        "nice_to_have": ">= 8/10",
-        "current": 0,
-        "status": "not_started"
-      },
-      "prompt_version_selected": {
-        "critical": "one version recommended",
-        "required": "with rationale + seller preference data",
-        "current": "none",
-        "status": "not_started"
-      }
+    "gated_by": [],
+    "depends_on_loops": [],
+    "start_day": 1,
+    "end_day": 15,
+    "agents": {
+      "collect_test_photos":     { "start_day": 1,  "end_day": 3,  "status": "not_started" },
+      "run_photo_to_listing_ai": { "start_day": 4,  "end_day": 12, "status": "not_started" },
+      "quality_check_outputs":   { "start_day": 13, "end_day": 15, "status": "not_started" }
     },
-    "agents": [
-      "collect_test_photos",
-      "run_photo_to_listing_ai",
-      "quality_check_outputs"
-    ],
-    "output_files": [
-      "graph/loop-c-photo/test-data/photos/",
-      "graph/loop-c-photo/output/photo_index.csv",
-      "graph/loop-c-photo/output/ai_outputs.json",
-      "graph/loop-c-photo/output/quality_report.md",
-      "graph/loop-c-photo/output/prompt_selection.json"
+    "metrics": {
+      "test_photos":         { "direction": "higher_better", "minimum": 8, "target": 10, "stretch": 12, "current": 0, "status": "not_started" },
+      "photos_with_output":  { "direction": "higher_better", "minimum": 8, "target": 10, "stretch": 12, "current": 0, "status": "not_started" },
+      "prompt_versions":     { "direction": "higher_better", "minimum": 2, "target": 3,  "stretch": 3,  "current": 0, "status": "not_started" },
+      "quality_score_of_10": { "direction": "higher_better", "minimum": 6, "target": 7,  "stretch": 8,  "current": null, "status": "not_started" },
+      "hallucination_rate_pct": { "direction": "lower_better", "maximum": 5, "target": 0, "stretch": 0, "current": null, "status": "not_started",
+        "definition": "Share of generated listings containing a specification the device does not have, measured against the human ground truth recorded before the run. Above 5% Loop-C has FAILED — this is a fail threshold, not a note." },
+      "prompt_version_selected": { "direction": "binary", "definition": "One prompt version recommended, with the numbers and the sample-size caveat behind it.", "current": false, "status": "not_started" }
+    },
+    "binary_requirements": {
+      "blind_review":            { "met": null, "substitute_allowed": false },
+      "ground_truth_before_run": { "met": null, "substitute_allowed": false }
+    },
+    "outputs": [
+      "graph/output/loop-c/photos/",
+      "graph/output/loop-c/photo_index.csv",
+      "graph/output/loop-c/ai_outputs.json",
+      "graph/output/loop-c/quality_report.md",
+      "graph/output/loop-c/prompt_selection.json"
     ],
     "escalation": {
-      "day_8_below_8_photos": "Use synthetic photos",
-      "day_12_below_8_reviews": "Focus top 8, document edge cases for v2",
-      "day_14_quality_below_6": "Flag as requiring UX simplification, extend to DAY 17"
+      "p8_under_8_photos": "Add synthetic photos. Not marketplace listing photos.",
+      "p12_under_8_reviews": "Focus on 8; document edge cases.",
+      "p15_quality_under_6": "Not a reason to extend. Record the result and carry it into the brief as 'workflow did not reach pilot quality'.",
+      "p15_hallucination_over_5pct": "Loop-C has FAILED, regardless of the quality score. The brief states that the workflow may not generate listing text without human review, and the pilot does not publish AI-generated specifications. Not a reason to extend the loop."
     }
   },
 
   "loop_d": {
     "name": "Repeat Seller Pattern & Recruitment",
-    "status": "not_started",
-    "deadline": "DAY 14 23:59 UTC",
-    "warning_threshold": "DAY 10 18:00 UTC",
-    "fail_threshold": "DAY 15 09:00 UTC",
-    "exit_conditions": {
-      "eligible_sellers_found": {
-        "critical": ">= 20",
-        "required": ">= 50",
-        "nice_to_have": ">= 100 with sub-segments",
-        "current": 0,
-        "status": "not_started"
-      },
-      "seller_profiles_enriched": {
-        "critical": ">= 15",
-        "required": ">= 20",
-        "nice_to_have": ">= 20 with 90%+ completeness",
-        "current": 0,
-        "status": "not_started"
-      },
-      "cohort_members_confirmed": {
-        "critical": ">= 4 with consent",
-        "required": ">= 5 with consent + contact info",
-        "nice_to_have": ">= 7 (includes backup)",
-        "current": 0,
-        "status": "not_started"
-      },
-      "cohort_profile_documented": {
-        "critical": "basic summary (size, categories)",
-        "required": "detailed summary + personas",
-        "nice_to_have": "summary + personas + motivation breakdown",
-        "current": false,
-        "status": "not_started"
-      }
+    "status": "blocked_by_gate",
+    "gated_by": ["G1"],
+    "depends_on_loops": [],
+    "start_day": 7,
+    "end_day": 19,
+    "agents": {
+      "query_paysera_transactions": { "start_day": 7,  "end_day": 9,  "status": "blocked_by_gate" },
+      "enrich_seller_profiles":     { "start_day": 9,  "end_day": 11, "status": "blocked_by_gate" },
+      "recruit_pilot_cohort":       { "start_day": 11, "end_day": 17, "status": "blocked_by_gate" },
+      "analyze_cohort_profile":     { "start_day": 18, "end_day": 19, "status": "blocked_by_gate" }
     },
-    "agents": [
-      "query_paysera_transactions",
-      "enrich_seller_profiles",
-      "recruit_pilot_cohort",
-      "analyze_cohort_profile"
-    ],
-    "output_files": [
-      "graph/loop-d-sellers/output/eligible_sellers.csv",
-      "graph/loop-d-sellers/output/enriched_profiles.json",
-      "graph/loop-d-sellers/output/recruitment_log.json",
-      "graph/loop-d-sellers/output/cohort_profile.json"
+    "metrics": {
+      "eligible_sellers":  { "direction": "higher_better", "minimum": 20, "target": 50, "stretch": 100, "current": 0, "status": "not_started" },
+      "profiles_enriched": { "direction": "higher_better", "minimum": 12, "target": 20, "stretch": 20,  "current": 0, "status": "not_started" },
+      "cohort_confirmed":  { "direction": "higher_better", "minimum": 4,  "target": 5,  "stretch": 7,   "current": 0, "status": "not_started" },
+      "cohort_profile_documented": { "direction": "binary", "definition": "Composition and categories documented, with the n=5 qualitative-sample caveat on every average.", "current": false, "status": "not_started" }
+    },
+    "binary_requirements": {
+      "no_query_before_g1":            { "met": null, "substitute_allowed": false },
+      "consent_before_participation":  { "met": null, "substitute_allowed": false },
+      "no_kyc_aml_reuse":              { "met": null, "substitute_allowed": false }
+    },
+    "incentive_eur": 25,
+    "outputs": [
+      "graph/output/loop-d/eligible_sellers.csv",
+      "graph/output/loop-d/enriched_profiles.json",
+      "graph/output/loop-d/recruitment_log.json",
+      "graph/output/loop-d/cohort_profile.json"
     ],
     "escalation": {
-      "day_8_below_20_eligible": "Broaden filters (lower min_value or include 1-tx sellers)",
-      "day_11_below_3_confirmed": "Increase incentive (50 EUR) or personal call",
-      "day_13_below_4_confirmed": "Extend to DAY 17 or proceed with 4"
+      "p13_under_20_eligible": "Broaden filters; log the change and notify Compliance.",
+      "p15_under_3_confirmed": "Extend the candidate list 20 → 40 and add personal outreach. Incentive unchanged.",
+      "p17_under_4_confirmed": "Launch with 4, recorded as a limitation. Do not admit sellers who fail the criteria."
     }
   },
 
   "loop_e": {
     "name": "Synthesis & Pilot Brief",
-    "status": "not_started",
-    "deadline": "DAY 19 23:59 UTC (CEO presentation DAY 20)",
-    "warning_threshold": "DAY 17 18:00 UTC",
-    "fail_threshold": "DAY 19 18:00 UTC",
-    "depends_on": ["loop_a", "loop_b", "loop_c", "loop_d"],
-    "exit_conditions": {
-      "synthesis_complete": {
-        "critical": "all 4 loop outputs integrated",
-        "required": "synthesis + 1-page summary",
-        "nice_to_have": "synthesis + risk matrix + mitigation roadmap",
-        "current": false,
-        "status": "not_started"
-      },
-      "persona_created": {
-        "critical": "1 persona drafted",
-        "required": "detailed + cohort alignment",
-        "nice_to_have": "2–3 personas (casual vs professional)",
-        "current": false,
-        "status": "not_started"
-      },
-      "workflow_checklist_complete": {
-        "critical": "6-step checklist drafted",
-        "required": "detailed checklist + FAQ",
-        "nice_to_have": "checklist + screenshots + video",
-        "current": false,
-        "status": "not_started"
-      },
-      "pilot_brief_complete": {
-        "critical": "draft brief with all sections",
-        "required": "ready for internal review",
-        "nice_to_have": "ready for board presentation",
-        "current": false,
-        "status": "not_started"
-      },
-      "internal_review": {
-        "critical": "reviewed by you",
-        "required": "reviewed by CTO + Legal (optional)",
-        "current": false,
-        "status": "not_started"
-      },
-      "executive_readiness": {
-        "critical": "can be presented to CEO",
-        "required": "feedback incorporated, final version",
-        "current": false,
-        "status": "not_started"
-      }
+    "status": "blocked_by_gate",
+    "gated_by": ["G1", "G2"],
+    "start_day": 21,
+    "end_day": 25,
+    "depends_on_loops": ["loop_a", "loop_b", "loop_c", "loop_d"],
+    "agents": {
+      "synthesize_all_outputs":      { "start_day": 21, "end_day": 22, "status": "blocked_by_gate" },
+      "create_persona":              { "start_day": 22, "end_day": 23, "status": "blocked_by_gate" },
+      "generate_workflow_checklist": { "start_day": 22, "end_day": 23, "status": "blocked_by_gate" },
+      "draft_pilot_brief":           { "start_day": 23, "end_day": 25, "status": "blocked_by_gate" }
     },
-    "agents": [
-      "synthesize_all_outputs",
-      "create_persona",
-      "generate_workflow_checklist",
-      "draft_pilot_brief"
-    ],
-    "output_files": [
-      "graph/loop-e-synthesis/output/synthesis.json",
-      "graph/loop-e-synthesis/output/persona.md",
-      "graph/loop-e-synthesis/output/workflow_checklist.md",
-      "graph/loop-e-synthesis/output/pilot_brief.md",
-      "graph/loop-e-synthesis/output/pilot_brief.pdf"
+    "metrics": {
+      "loop_outputs_integrated": { "direction": "higher_better", "minimum": 4, "target": 4, "stretch": 4, "current": 0, "status": "not_started" },
+      "personas":                { "direction": "higher_better", "minimum": 1, "target": 1, "stretch": 3, "current": 0, "status": "not_started" },
+      "checklist_steps":         { "direction": "higher_better", "minimum": 6, "target": 6, "stretch": 6, "current": 0, "status": "not_started" },
+      "untagged_claims":         { "direction": "lower_better", "maximum": 0, "target": 0, "stretch": 0, "current": null, "status": "not_started" },
+      "tbd_count":               { "direction": "informational", "definition": "Count of [TBD] placeholders left in the brief. No threshold: a [TBD] is an honest answer; an invented number is not.", "current": null }
+    },
+    "binary_requirements": {
+      "provenance_complete":       { "met": null, "substitute_allowed": false },
+      "no_prewritten_conclusions": { "met": null, "substitute_allowed": false }
+    },
+    "$binary_requirements_comment": "legal_review and cto_review moved to gates.G3 — they were due P26, after this loop closes on P25.",
+    "outputs": [
+      "graph/output/loop-e/synthesis.json",
+      "graph/output/loop-e/persona.md",
+      "graph/output/loop-e/workflow_checklist.md",
+      "graph/output/loop-e/pilot_brief.md"
     ],
     "escalation": {
-      "day_16_no_synthesis": "Compress to 2 days, skip appendices",
-      "day_18_brief_not_drafted": "Present skeleton + raw data to CTO",
-      "day_19_not_reviewed": "Present as draft, internal feedback pending"
+      "p23_not_started": "Cut appendices. Never page 1, never the provenance tags.",
+      "p25_not_drafted": "CEO presentation moves to P28. Review is not compressed.",
+      "p26_untagged_claims_found": "Remove them or mark [TBD]. The brief does not ship with untagged claims."
     }
   },
 
-  "timeline_summary": {
-    "week_1": {
-      "description": "DAY 1–7: Loop initiation (A, B, C, D parallel)",
-      "milestones": [
-        "Loop-A: Contacts collected (n=15+)",
-        "Loop-B: Docs extracted, legal meetings scheduled",
-        "Loop-C: Test photos collected (n=10)",
-        "Loop-D: Eligible sellers identified (n=50+)"
-      ]
-    },
-    "week_2": {
-      "description": "DAY 8–14: Loop execution continues",
-      "milestones": [
-        "Loop-A: Interviews conducted (8–12 complete)",
-        "Loop-B: Legal constraints documented",
-        "Loop-C: AI outputs generated + tested",
-        "Loop-D: Cohort recruitment (5 confirmed)"
-      ]
-    },
-    "week_3": {
-      "description": "DAY 15–21: Loop-E synthesis + brief preparation",
-      "milestones": [
-        "Loop-E: Synthesis complete (DAY 15–16)",
-        "Loop-E: Brief drafted (DAY 17–18)",
-        "Loop-E: Internal review (DAY 18–19)",
-        "CEO presentation ready (DAY 20)"
-      ]
-    },
-    "week_4": {
-      "description": "DAY 22–30: Pilot launch prep",
-      "milestones": [
-        "Feedback incorporation (5–7 days)",
-        "Platform onboarding (2–3 days)",
-        "Concierge pilot START"
-      ]
-    }
+  "milestones": [
+    { "day": 3,  "id": "compliance_docs_extracted", "label": "Compliance documents extracted", "done": false },
+    { "day": 6,  "id": "gate_g1",                   "label": "GATE G1 — lawful basis in writing", "done": false },
+    { "day": 15, "id": "gate_g2",                   "label": "GATE G2 — scope signed; Loops B and C complete", "done": false },
+    { "day": 20, "id": "research_complete",         "label": "Loops A and D complete", "done": false },
+    { "day": 25, "id": "brief_drafted",             "label": "Pilot brief drafted", "done": false },
+    { "day": 26, "id": "gate_g3",                   "label": "GATE G3 — CTO + Legal review recorded; brief approved for presentation", "done": false },
+    { "day": 27, "id": "ceo_decision",              "label": "CEO go/no-go decision", "done": false },
+    { "day": 30, "id": "prep_complete",             "label": "Onboarding and platform prep complete", "done": false }
+  ],
+
+  "data_retention": {
+    "$comment": "G1 decides the period and the owner; both are [TBD] until it runs. Tracked here because nothing in the graph executed the deletion G1 authorises the research on.",
+    "retention_days": "[TBD — G1]",
+    "deletion_owner": "[TBD — G1]",
+    "deletion_due": "[TBD — prep_start_date + retention_days]",
+    "deletion_executed": { "met": false, "executed_by": null, "executed_at": null, "substitute_allowed": false },
+    "covers_loops": ["loop_a", "loop_d", "loop_e"]
   },
 
   "global_constraints": {
-    "critical_path": "Loop-A + Loop-B + Loop-C + Loop-D (parallel) → Loop-E",
-    "shortest_possible_duration": "19 days (if all loops hit 'required' level)",
-    "risk_mitigation": "If any loop fails, compress Loop-E or delay CEO presentation",
+    "critical_path": "loop_b.legal_basis_review (G1) → loop_a + loop_d → loop_b.map_to_pilot_scope (G2) → loop_e → G3 review → CEO",
+    "shortest_possible_prep_duration_days": 27,
+    "$comment_on_duration": "27 days to the CEO decision, 30 to a launch-ready state. v1.0 claimed a 19-day shortest path, which was only achievable by running personal-data collection before the legal basis existed.",
+    "behind_schedule_rule": "The response to being behind is a later date or a narrower scope. Never a skipped review, a skipped consent, or a bypassed gate.",
     "daily_sync_recommended": true
   }
 }

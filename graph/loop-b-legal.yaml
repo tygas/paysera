@@ -1,209 +1,360 @@
 ---
 loop: B
 name: Legal & Compliance Bounds
-goal: Apibrėžti teisinę rėmelę pilotui (GDPR, ginčai, draudžiamos prekės)
+goal: >-
+  Nustatyti teisinį pagrindą pačiam tyrimui (vartai G1), po to — piloto veikimo
+  ribas (vartai G2).
 category: Compliance
-duration_days: 14
-parallel_with: [A, C, D]
+plan_source: graph/plan.json
+start_day: P1
+end_day: P15
+parallel_with: [C]
+gates_owned: [G1, G2]
+
+# ---------------------------------------------------------------------------
+# KODĖL ŠIS LOOP'AS PRASIDEDA PIRMAS
+#
+# Paysera yra licencijuota elektroninių pinigų įstaiga. v1.0 versijoje Loop-B
+# veikė lygiagrečiai su Loop-A ir Loop-D, o teisinis pritarimas buvo numatytas
+# P14 — tuo metu Loop-D jau nuo P3 buvo pateikęs užklausą į produkcinę klientų
+# duomenų bazę ir nuo P8 siuntęs rinkodaros laiškus realiems klientams.
+# INDEX.md tuo pačiu metu teigė „Dependencies: None between loops".
+#
+# Šioje versijoje Loop-B pirmiausia uždaro G1 (teisinis pagrindas asmens
+# duomenims) iki P6 pabaigos. Iki tol nė vienas agentas neliečia jokio fizinio
+# asmens duomenų. „Tęsiam laukdami pritarimo" kelio nėra.
+# ---------------------------------------------------------------------------
 
 agents:
   - name: extract_compliance_docs
     type: document_search + internal_repo
+    start_day: P1
+    end_day: P3
+    data_class: none
+    depends_on: []
     prompt: |
-      Iš Paysera internorinių dokumentų ar viešų šaltinių surask:
+      Iš Paysera vidinių dokumentų ir viešų šaltinių surink:
 
-      1. **GDPR & Data Protection:**
-         - Kaip Paysera valdo klientų duomenis?
-         - Koki duomenys gali būti naudojami skelbimų platformoje?
-         - Kas yra "sensitive data" ir kaip ją apsaugoti?
-         - Ar reikalingas explicit consent?
+      1. **Asmens duomenys ir GDPR:**
+         - Kaip Paysera tvarko klientų duomenis ir kokiais pagrindais?
+         - Kurie duomenys gali būti naudojami produkto tyrimui?
+         - Kas laikoma specialių kategorijų ar padidintos rizikos duomenimis?
+         - Kada reikalingas atskiras sutikimas, o kada pakanka kito pagrindo?
 
-      2. **Payment & Escrow Policy:**
-         - Kaip Paysera valdo pinigus ginčų metu?
-         - Kiek laiko laikyti pinigai (laikymo laikotarpis)?
-         - Kas yra "dispute" ir koks resolution process?
-         - Ar yra maximum transaction limit?
+      2. **Mokėjimai ir lėšų laikymas:**
+         - Kaip Paysera elgiasi su lėšomis ginčo metu?
+         - Ar apskritai egzistuoja lėšų laikymo (escrow) mechanizmas ir kokiam
+           produktui jis licencijuotas?
+         - Kas dokumentuose vadinama „ginču" ir koks jo sprendimo procesas?
+         - Ar yra sandorio dydžio ribos?
 
-      3. **Prohibited Items:**
-         - Kas negali būti parduodama per Paysera?
-         - Ar visos elektronikos kategorijos OK?
-         - Ar stolen goods / counterfeit risk?
-         - Kas reikalingas verification (Serial number, IMEI)?
+      3. **Draudžiamos prekės:**
+         - Ko negalima parduoti per Paysera?
+         - Ar visos elektronikos subkategorijos priimtinos?
+         - Kaip dokumentuose traktuojama vogtų / suklastotų prekių rizika?
+         - Kokios patikros numatytos (serijos numeris, IMEI)?
 
-      4. **Fraud & AML (Anti-Money Laundering):**
-         - Kaip nustatyti susisietusius pardavėjus / pirkėjus?
-         - Koks transaction volume yra "red flag"?
-         - Koks timeout tarp transakcijų?
+      4. **Sukčiavimas ir AML:**
+         - Kaip identifikuojami susiję pardavėjai / pirkėjai?
+         - Koks sandorių srautas laikomas „red flag"?
+         - Kokios yra REALIOS reguliacinės ribos?
+           SVARBU: išrašyk jas iš dokumento su citata. Nesukurk skaičiaus.
+           Piloto 1 500 EUR riba yra mūsų pačių rizikos apribojimas, o NE
+           AML riba — šių dviejų dalykų nemaišyk.
 
-      5. **Liability & Insurance:**
-         - Kas atsakinga, jei prekė nesurenka/sustabus?
-         - Ar Paysera draudžia produkto klaidas?
-         - Kas yra user responsibility?
+      5. **Atsakomybė ir draudimas:**
+         - Kas atsako, jei prekė neatvyksta arba neatitinka aprašymo?
+         - Ką Paysera dengia ir ko nedengia?
+         - Kur baigiasi platformos ir prasideda naudotojo atsakomybė?
 
-      OUTPUT: Ištraukti paragrafai, linkai į dokumentus, citatos.
+      IŠVESTIS: ištraukti punktai su tikslia citata ir nuoroda į dokumentą.
+      Kiekvienas įrašas privalo turėti `source_doc` ir `source_quote`.
+      Įrašas be citatos į išvestį nepatenka.
 
     input:
       source_categories:
-        - internal_docs: ["gdpr_policy.md", "dispute_policy.pdf", "payment_terms.md"]
-        - paysera_public: ["https://www.paysera.com/v2/en/"]
-        - legal_templates: "any pre-written legal bounds"
+        internal_docs: ["gdpr_policy", "dispute_policy", "payment_terms", "aml_policy"]
+        paysera_public: ["https://www.paysera.com/v2/en/"]
+        legal_templates: "esami teisiniai šablonai, jei yra"
 
     output_schema: |
-      - category: string (GDPR, Payment, Items, Fraud, Liability)
+      - category: string (GDPR | Payment | Items | Fraud_AML | Liability)
       - requirement: string
-      - source_doc: string (file name or URL)
-      - source_quote: string (exact excerpt)
+      - source_doc: string (privaloma)
+      - source_quote: string (privaloma, tiksli citata)
       - compliance_criticality: "MUST" | "SHOULD" | "NICE"
-      - affected_pilot_flow: string (description)
+      - affected_pilot_flow: string
 
     success_criteria:
-      critical: ">= 2 categories covered (GDPR + Payment OR Items + Fraud)"
-      required: ">= 3 categories"
-      nice_to_have: "all 5 categories + internal legal review"
+      minimum: ">= 3 kategorijos padengtos"
+      target: "visos 5 kategorijos"
+      stretch: "visos 5 + vidinė teisininkų peržiūra"
 
-    estimated_duration: 5 days
-    dependencies: none
-    owner: "You (document search) + Legal team review"
+    owner: "Eimantas (paieška) + Legal (peržiūra)"
 
-  - name: conduct_legal_consultation
-    type: stakeholder_interview
+  # -------------------------------------------------------------------------
+  - name: legal_basis_review
+    type: compliance_decision
+    start_day: P3
+    end_day: P6
+    data_class: none
+    depends_on: [extract_compliance_docs]
+    closes_gate: G1
+    critical: true
     prompt: |
-      Pokalbis su Paysera Legal / Compliance team.
+      TIKSLAS: gauti RAŠTIŠKĄ Legal/DPO sprendimą, ar ir kokiu pagrindu šis
+      tyrimas gali tvarkyti asmens duomenis. Iki šio sprendimo Loop-A ir
+      Loop-D nestartuoja.
 
-      AGENDA:
-      1. Pilot scope: elektronikos kategorija, first cohort n=5,
-         max transaction size?
+      Pateik Legal/DPO šį klausimyną. Kiekvienas punktas — atskiras
+      sprendimas su „taip / ne / taip su sąlyga".
 
-      2. Specific risks:
-         - Can we hold payment in escrow for 7 days?
-         - What's the refund policy if item condition doesn't match?
-         - How do we verify identity / prevent reseller abuse?
+      1. **Teisinis pagrindas kiekvienam tikslui atskirai (GDPR 6 str.):**
+         a) Vidinė užklausa į transakcijų duomenis (Loop-D, `query_paysera_transactions`)
+         b) Profilių praturtinimas (Loop-D, `enrich_seller_profiles`)
+         c) Rinkodaros / verbavimo komunikacija esamiems klientams (Loop-D, `recruit_pilot_cohort`)
+         d) Kontaktų rinkimas iš viešų šaltinių (Loop-A, `find_contacts`)
+         e) Pokalbio įrašymas ir transkribavimas (Loop-A, `conduct_interviews`)
 
-      3. Prohibited items (electronics specific):
-         - Stolen goods detection (IMEI blacklist)?
-         - Counterfeit risk (Apple/Samsung authenticity)?
-         - Radiation/hazmat electronics?
+      2. **Tikslo apribojimas — kritinis klausimas:**
+         Loop-D norėtų matyti tapatybės patvirtinimo statusą, AML žymas ir
+         ginčų istoriją. Šie duomenys surinkti vykdant teisinę prievolę
+         (AML/KYC), o ne produkto tyrimui.
+         KLAUSIMAS: ar juos apskritai galima naudoti kohortos atrankai?
+         NUMATYTASIS ATSAKYMAS, jei Legal nepatvirtina raštu: NE.
+         Tokiu atveju Loop-D atranka remiasi tik sandorių elgsena, be
+         KYC/AML laukų, ir tai fiksuojama filtruose.
 
-      4. Dispute escalation:
-         - Who investigates fraud claims?
-         - What's the SLA?
-         - Is there a chargeback risk to Paysera?
+      3. **DPIA (poveikio duomenų apsaugai vertinimas):**
+         Reikalingas ar ne? Sprendimas + pagrindimas raštu.
 
-      5. Red flags for AML:
-         - If one seller pushes 100 EUR / day repeatedly?
-         - If 5 sellers suddenly transact same buyer (reseller ring)?
+      4. **Saugojimas ir ištrynimas:**
+         - Kiek laiko saugomi transkriptai, įrašai, praturtinti profiliai?
+         - Kas ir kaip juos ištrina pasibaigus tyrimui?
+         - Kur jie saugomi (jurisdikcija, prieigos teisės)?
 
-      OUTPUT: Recorded call + approved written bounds.
+      5. **Komunikacijos tekstai:**
+         - Patvirtinta kvietimo formuluotė (LT/EN)
+         - Patvirtinta sutikimo formuluotė pokalbio įrašymui
+         - Patvirtintas skatinimo dydis (20 EUR pokalbiams, 25 EUR kohortai)
+           ir patvirtinimas, kad jo NEKEIČIAME tyrimo eigoje
+
+      6. **Išoriniai šaltiniai:**
+         Kuriuos viešus šaltinius teisėtai galima naudoti kontaktams ir
+         kainų palyginimui? Ar automatinis rinkimas leidžiamas?
+         Prielaidų čia nedarome — reikia atsakymo.
+
+      IŠVESTIS: `legal_basis_decision.md` su pasirašiusio asmens vardu,
+      pareigomis, data ir kiekvieno punkto sprendimu.
 
     input:
-      stakeholders:
-        - "legal@paysera.com"
-        - "compliance@paysera.com"
-        - "fraud@paysera.com"
+      compliance_extracts: "[iš extract_compliance_docs]"
+      stakeholders: ["legal@paysera.com", "dpo@paysera.com", "compliance@paysera.com"]
+      meeting_format: "60 min + rašytinis patvirtinimas"
+
+    output_schema: |
+      - purpose: string (kuris tikslas iš 1 punkto)
+      - lawful_basis: string (GDPR 6 str. punktas) | "NOT PERMITTED"
+      - conditions: [string]
+      - decided_by: {name: string, role: string, email: string}
+      - decided_at: YYYY-MM-DD
+      dpia_required: bool
+      dpia_rationale: string
+      retention_days: integer
+      deletion_owner: string
+      approved_outreach_text_lt: string
+      approved_outreach_text_en: string
+      approved_consent_text: string
+      approved_incentives_eur: {interviews: 20, cohort: 25}
+      permitted_external_sources: [string]
+      kyc_aml_reuse_permitted: bool
+
+    success_criteria:
+      minimum: "raštiškas sprendimas visiems 5 tikslams (leista arba neleista)"
+      target: "sprendimas + DPIA išvada + patvirtinti tekstai + saugojimo terminas"
+      stretch: "papildomai — pakartotinai naudojamas tyrimų duomenų šablonas kitiems produktams"
+
+    gate_effect: |
+      G1 UŽDAROMAS: Loop-A ir Loop-D gali startuoti P7.
+      G1 NEUŽDAROMAS: Loop-A ir Loop-D NESTARTUOJA. Visas grafikas slenka
+      diena už dieną. Eskalacija — ne apėjimas.
+
+    owner: "Legal / DPO (sprendimas) + Eimantas (klausimyno paruošimas)"
+
+  # -------------------------------------------------------------------------
+  - name: conduct_legal_consultation
+    type: stakeholder_interview
+    start_day: P4
+    end_day: P10
+    data_class: none
+    depends_on: [extract_compliance_docs]
+    prompt: |
+      Pokalbiai su Legal / Compliance / Fraud komandomis apie PILOTO ribas
+      (ne apie tyrimo teisinį pagrindą — tai G1 dalykas).
+
+      DARBOTVARKĖ:
+      1. Piloto apimtis: elektronikos kategorija, kohorta n=5,
+         maksimalus sandorio dydis?
+
+      2. Apsaugotas mokėjimas — HIPOTEZĖ, kurią reikia patikrinti:
+         - Ar Paysera licencija apskritai leidžia laikyti lėšas vartotojų
+           skelbimų sandoryje?
+         - Jei taip — kokiomis sąlygomis ir kiek dienų?
+         - Jei ne — kokia alternatyva (mokėjimas po patvirtinimo,
+           pristatymo partneris, kita)?
+         SVARBU: kol nėra atsakymo, nė viename dokumente apsaugotas
+         mokėjimas nevadinamas esama Paysera funkcija.
+
+      3. Draudžiamos prekės (elektronikai specifiškai):
+         - Vogtų prekių aptikimas (IMEI patikra — ar turime prieigą?)
+         - Klastočių rizika
+         - Reguliuojama įranga
+
+      4. Ginčų eskalavimas:
+         - Kas tiria pretenzijas? Koks SLA?
+         - Kokia chargeback rizika tenka Paysera?
+
+      5. AML „red flag" scenarijai pilote:
+         - Vieno pardavėjo pasikartojantis srautas
+         - Keli pardavėjai, tas pats pirkėjas
+
+      IŠVESTIS: protokolas + patvirtintos ribos raštu.
+
+    input:
+      stakeholders: ["legal@paysera.com", "compliance@paysera.com", "fraud@paysera.com"]
       meeting_duration: "60 min"
-      meeting_format: "Zoom + transcript"
+      meeting_format: "įrašomas skambutis + protokolas"
 
     output_schema: |
       - question: string
       - answer: string
-      - approver: string (name, email)
+      - approver: {name: string, email: string}
+      - decision: "approved" | "needs_exception" | "out_of_scope" | "open"
       - follow_up_needed: bool
-      - decision: "approved" | "needs_exception" | "out_of_scope"
 
     success_criteria:
-      critical: ">= 1 legal meeting (payment/escrow + dispute handling)"
-      required: ">= 2 meetings (add fraud/AML specifics)"
-      nice_to_have: "Legal approval email + signed bounds document"
+      minimum: ">= 1 susitikimas su protokolu (mokėjimai/lėšų laikymas + ginčai)"
+      target: ">= 2 susitikimai + patvirtinimo laiškas"
+      stretch: ">= 3 susitikimai + pasirašytas ribų dokumentas"
 
-    estimated_duration: 7 days (scheduling + 2–3 meetings)
-    dependencies: "extract_compliance_docs PARTIAL (enough to brief legal)"
-    owner: "You (scheduling) + Legal team (answering)"
+    owner: "Eimantas (organizavimas) + Legal/Compliance/Fraud (atsakymai)"
 
+  # -------------------------------------------------------------------------
   - name: map_to_pilot_scope
     type: requirements_synthesis
+    start_day: P11
+    end_day: P15
+    data_class: none
+    depends_on: [conduct_legal_consultation]
+    closes_gate: G2
     prompt: |
-      Iš `extract_compliance_docs` + `conduct_legal_consultation` output'ų:
+      Iš `extract_compliance_docs` + `conduct_legal_consultation` sudėk
+      PILOTO TEISINĮ SĄRAŠĄ. Kiekviena taisyklė turi turėti šaltinį —
+      dokumento citatą arba įvardytą patvirtinusį asmenį.
 
-      1. **PILOT BOUNDARIES — MUST HAVE:**
-         - Transaction size: min/max EUR
-         - Escrow hold period: X days
-         - Dispute resolution time: Y days
-         - Refund policy: Z conditions
+      1. **PILOTO RIBOS:**
+         - Sandorio dydis: min/max EUR (nurodyk, kad tai piloto rizikos riba,
+           o ne reguliacinė riba — jos nurodomos atskirai su citata)
+         - Lėšų laikymo laikotarpis: X dienų arba „neleidžiama"
+         - Ginčo sprendimo terminas: Y darbo dienų
+         - Grąžinimo sąlygos
 
-      2. **PROHIBITED ITEMS — CLEAR LIST:**
-         - [Stolen goods rules]
-         - [Counterfeit detection methods]
-         - [Hazmat / radiation rules]
-         - [Exceptions — jei kurie elektronikos subcategories negatim]
+      2. **DRAUDŽIAMOS PREKĖS** — konkretus sąrašas su pagrindimu
 
-      3. **IDENTITY & VERIFICATION:**
-         - Min verification level (email + phone OR national ID)?
-         - IMEI/Serial number check: mandatory?
-         - Repeat seller privileges (fast checkout)?
+      3. **TAPATYBĖ IR PATIKRA:**
+         - Minimalus patvirtinimo lygis
+         - IMEI/serijos patikra: privaloma ar ne
+         - Ką reiškia „jau patvirtintas" pardavėjas
 
-      4. **RED FLAGS FOR PILOT:**
-         - Transaction velocity: max X per day per seller?
-         - Clustering detection: "many different sellers, same buyer" = flag?
-         - Timeout between sales: min X hours?
+      4. **RIZIKOS ŽYMOS PILOTE:**
+         - Sandorių greitis, klasterizacija, laiko tarpai
 
-      5. **ESCALATION PATHS:**
-         - User disputes item → goes to legal@paysera
-         - Fraud signal triggers → goes to fraud@paysera
-         - AML red flag → goes to compliance@paysera
+      5. **ESKALAVIMO KELIAI:**
+         - Ginčas → legal@paysera
+         - Sukčiavimo signalas → fraud@paysera
+         - AML žyma → compliance@paysera
 
-      OUTPUT: "Pilot Legal Checklist" markdown + JSON schema.
+      6. **ATVIRI KLAUSIMAI:**
+         Ko NEPAVYKO patvirtinti. Šis sąrašas nėra gėda — jis privalomas
+         ir keliauja į brief'o pirmą puslapį kaip atvira rizika.
+
+      IŠVESTIS: „Piloto teisinis sąrašas" (markdown + JSON).
 
     input:
-      compliance_extracts: "[from extract_compliance_docs output]"
-      legal_decisions: "[from conduct_legal_consultation output]"
+      compliance_extracts: "[iš extract_compliance_docs]"
+      legal_decisions: "[iš conduct_legal_consultation]"
       pilot_category: "used_electronics"
       pilot_cohort_size: 5
 
     output_schema: |
-      - category: string (Transaction, Items, Identity, Redflags, Escalation)
+      - category: string (Transaction | Items | Identity | RedFlags | Escalation)
       - rule: string
-      - applicability: "critical" | "warning" | "informational"
-      - verification_method: string (how to enforce)
-      - responsible_team: string (Legal, Fraud, Compliance, PO)
-      - pilot_impact: string (what changes if we don't follow?)
+      - source: string (dokumento citata arba patvirtinusio asmens vardas)
+      - applicability: "must" | "warning" | "informational"
+      - verification_method: string
+      - responsible_team: string
+      - pilot_impact: string
+      open_items: [ {question: string, blocking: bool, owner: string} ]
+      signed_off_by: {name: string, email: string, date: YYYY-MM-DD}
 
     success_criteria:
-      critical: ">= 3 rules per category"
-      required: "5 categories * 3 rules = 15 total rules + signed approval"
-      nice_to_have: "automated enforcement (flags in code) designed"
+      minimum: ">= 10 taisyklių su šaltiniais"
+      target: ">= 15 taisyklių + pasirašytas patvirtinimas"
+      stretch: ">= 20 taisyklių + techninio įgyvendinimo pavyzdžiai"
 
-    estimated_duration: 3 days (DAY 11–14)
-    dependencies: "extract_compliance_docs + conduct_legal_consultation PARTIAL"
-    owner: "You + Legal team co-author"
+    gate_effect: |
+      G2 UŽDAROMAS: Loop-E gali sintezuoti brief'ą ir teigti, kad ribos
+      patvirtintos.
+      G2 NEUŽDAROMAS: Loop-E vis tiek vyksta, bet brief'as pateikiamas kaip
+      „apimtis laukia teisinio patvirtinimo", o nepatvirtinti punktai
+      surašomi pirmame puslapyje. Pilotas nestartuoja.
+
+    owner: "Eimantas + Legal (bendraautorystė)"
 
 exit_conditions:
   completion:
-    - metric: "compliance_categories_covered"
-      critical: ">= 2 (GDPR + Payment)"
-      required: ">= 3 (add Items or Fraud)"
-      nice_to_have: "all 5"
+    - metric: compliance_categories_covered
+      minimum: 3
+      target: 5
+      stretch: 5
 
-    - metric: "legal_meetings_completed"
-      critical: ">= 1 recorded + minutes"
-      required: ">= 2 meetings + approval email"
+    - metric: legal_meetings_completed
+      minimum: 1
+      target: 2
+      stretch: 3
 
-    - metric: "pilot_checklist_items"
-      critical: ">= 10 rules documented"
-      required: ">= 15 rules + signed approval"
-      nice_to_have: ">= 20 rules with enforcement code examples"
+    - metric: pilot_checklist_rules
+      minimum: 10
+      target: 15
+      stretch: 20
 
-    - metric: "legal_sign_off"
-      critical: "email from legal@paysera OR compliance@paysera"
-      required: "email + explicit approval for pilot scope"
+  binary_requirements:
+    - id: g1_written_decision
+      description: "Raštiškas teisinio pagrindo sprendimas visiems 5 tvarkymo tikslams"
+      due_day: P6
+      substitute_allowed: false
+
+    - id: g2_signed_scope
+      description: "Pasirašytos piloto ribos"
+      due_day: P15
+      substitute_allowed: false
+      note: "CEO pristatyme gali būti „atvira", bet tik jei surašyta pirmame puslapyje. Pilotui startuoti — privaloma."
 
   timeline:
-    deadline: "DAY 14 23:59 UTC"
-    warning_threshold: "DAY 12 18:00 UTC — if no legal meetings scheduled"
-    fail_threshold: "DAY 16 09:00 UTC — if not legal-approved"
+    g1_deadline: "P6 pabaiga"
+    g2_deadline: "P15 pabaiga"
+    warning_threshold: "P4 — jei G1 susitikimas dar nesuplanuotas"
 
   escalation:
     if_behind_schedule: |
-      - DAY 10: No legal response → escalate to CEO/Kostas
-      - DAY 12: <10 rules documented → extend DAY 15, compress Loop-E
-      - DAY 14: No sign-off → mark Loop-B as "pending approval",
-        proceed with Loop-E draft (pending final legal review)
+      - P4: nėra atsakymo dėl G1 → eskaluoti CEO (Kostas) tą pačią dieną.
+        G1 yra kritinis kelias — jis blokuoja du iš keturių loop'ų.
+      - P6: G1 neuždarytas → Loop-A ir Loop-D NESTARTUOJA. Visas grafikas
+        slenka diena už dieną. Loop-C tęsiasi (jis nenaudoja asmens duomenų).
+      - P12: < 10 taisyklių → siaurinti piloto apimtį, o ne praleisti taisykles.
+      - P15: G2 neuždarytas → brief'as pažymimas „apimtis nepatvirtinta",
+        atviri punktai keliauja į pirmą puslapį, pilotas nestartuoja.
+
+  # v1.0 čia buvo eilutė: „DAY 14: No sign-off → mark as pending, proceed with
+  # Loop-E draft (pending final legal review)". Ji pašalinta. Reguliuojamoje
+  # įstaigoje „tęsiam laukdami pritarimo" nėra eskalacija — tai apėjimas.

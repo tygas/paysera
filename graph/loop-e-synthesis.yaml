@@ -1,500 +1,437 @@
 ---
 loop: E
-name: Synthesis & Pilot Brief Generation
-goal: Iš A+B+C+D rezultatų sukurti koherentišką 30-Day Pilot Brief
+name: Synthesis & Pilot Brief
+goal: Iš A+B+C+D rezultatų sudėti vieną brief'ą, kuriame kiekvienas teiginys turi šaltinį
 category: Documentation & Strategy
-duration_days: 5
-parallel_with: none (sequential, starts after A, B, C, D COMPLETE)
+plan_source: graph/plan.json
+start_day: P21
+end_day: P25
+parallel_with: none
+gated_by: [G1, G2]
+gate_note: >-
+  DU VARTAI, NE VIENI. Iki 2026-08-16 čia buvo tik G2. Trys iš keturių šio
+  loop'o agentų tvarko klientų asmens duomenis (personos, brief'as iš Loop-D
+  kohortos ir Loop-A pokalbių). G2 yra piloto apimties patvirtinimas —
+  komercinis sprendimas. Jis nėra ir negali būti teisinis pagrindas fizinio
+  asmens duomenims tvarkyti. Tai G1, Loop-E lygiai taip pat kaip Loop-A ir
+  Loop-D.
+
+  Praktikoje seka buvo saugi (G1 uždaromas P6, Loop-E startuoja P21), todėl
+  tai buvo modelio, o ne vykdymo klaida. Bet grafas yra kontrolė: jei grafikas
+  kada nors suspaudžiamas, niekur nebuvo užfiksuota, kad Loop-E apskritai
+  priklauso nuo G1.
+
+depends_on_loops: [loop_a, loop_b, loop_c, loop_d]
+
 depends_on_completion:
-  - loop-a: "conduct_interviews agent COMPLETE + insights extracted"
-  - loop-b: "map_to_pilot_scope agent COMPLETE + legal checklist signed"
-  - loop-c: "quality_check_outputs agent COMPLETE + prompt version selected"
-  - loop-d: "analyze_cohort_profile agent COMPLETE + cohort documented"
+  loop-a: "extract_insights baigtas (P20)"
+  loop-b: "map_to_pilot_scope baigtas, G2 uždarytas arba atviri punktai surašyti (P15)"
+  loop-c: "quality_check_outputs baigtas (P15)"
+  loop-d: "analyze_cohort_profile baigtas (P19)"
+
+# ---------------------------------------------------------------------------
+# PAGRINDINĖ TAISYKLĖ
+#
+# v1.0 versijoje šio loop'o prompt'uose buvo IŠ ANKSTO ĮRAŠYTOS IŠVADOS:
+#   „Loop-A: 'payment trust' was #2 theme"
+#   „Loop-C: 'photo-to-listing v2 scores 7.5/10'"
+#   „Išvada: 'Persona matches real cohort — low risk for pilot'"
+#   „Išvada: 'Pilot launch is low-risk with documented safeguards'"
+# Duomenų dar nebuvo. Agentui buvo nurodyta, ką rasti.
+#
+# Visos jos pašalintos. Sintezės agentas gauna vietas rezultatams, ne
+# rezultatus. Jei duomenys rodo priešingai — brief'as sako priešingai.
+# ---------------------------------------------------------------------------
+
+provenance_rule:
+  description: >-
+    Kiekvienas faktinis teiginys brief'e turi tiksliai vieną šaltinio žymą.
+    Teiginys be žymos blokuoja brief'ą — tai binary reikalavimas, ne pastaba.
+  tags:
+    "[A:n]": "Iš Loop-A, n pokalbių. n privalo sutapti su tikru transkriptų skaičiumi."
+    "[B]": "Iš Loop-B, su dokumento citata arba patvirtinusio asmens vardu."
+    "[C]": "Iš Loop-C matavimo, su imties dydžiu."
+    "[D]": "Iš Loop-D užklausos, su data."
+    "[EXT:<url>]": "Išorinis viešas šaltinis. Nuoroda turi veikti ir turėti datą."
+    "[HYPOTHESIS]": "Dar ne įrodymas. Rašoma kaip hipotezė, niekada būtuoju laiku."
+    "[TBD]": "Sąmoningai neužpildyta vieta."
 
 agents:
   - name: synthesize_all_outputs
     type: data_aggregation
+    start_day: P21
+    end_day: P22
+    data_class: customer_personal
+    depends_on: []
+    requires_gate: [G1, G2]
     prompt: |
-      Iš keturų loop'ų output'ų nuorodų sintezuok visa informaciją į
-      vieną koherentišką duomenų struktūrą.
+      Sujunk keturių loop'ų rezultatus į vieną struktūrą.
 
-      **INPUT SOURCES:**
-      1. Loop-A: extract_insights output
-         - themes: [{name, mentions, quotes, severity}]
-         - persona_draft: {name, age_range, seller_type, pain_points, trust_triggers}
+      ĮVESTIS:
+      1. Loop-A `extract_insights`: temos su mentions/denominator, citatos, persona
+      2. Loop-B `map_to_pilot_scope`: taisyklės su šaltiniais, atviri punktai, parašas
+      3. Loop-C `quality_check_outputs`: matavimai, imtis, rekomenduota versija
+      4. Loop-D `analyze_cohort_profile`: kohortos aprašas, personos
 
-      2. Loop-B: map_to_pilot_scope output
-         - pilot_checklist: [{category, rule, applicability}]
-         - legal_sign_off: bool, approver email
+      SINTEZĖS KLAUSIMAI — atsakyk pagal duomenis, ne pagal lūkestį:
 
-      3. Loop-C: quality_check_outputs output
-         - recommended_prompt_version: string
-         - metrics_summary: {accuracy, clarity, price_deviation, condition_match}
-         - quality_report: string
+      1. Personos:
+         - Kokia persona matyti Loop-A pokalbiuose?
+         - Kokia yra faktinė Loop-D kohorta?
+         - Ar jos sutampa? Jei ne — kuo skiriasi ir ką tai reiškia pilotui?
+         Nesutapimas yra vertingesnis radinys nei sutapimas. Jei kohorta
+         neatitinka personos, tai rašoma, o ne glaistoma.
 
-      4. Loop-D: analyze_cohort_profile output
-         - cohort_summary: {size, avg_tx_per_month, avg_value, categories, satisfaction}
-         - seller_personas: [{persona_name, count, behavior, motivation}]
+      2. Skausmo taškai ir sprendimai:
+         - Kurios Loop-A temos turi Loop-B patvirtintą arba Loop-C ištestuotą
+           atsaką?
+         - Kurios NETURI? Šis sąrašas eina į brief'ą kaip spraga.
 
-      **SYNTHESIS LOGIC:**
-      1. Merge seller personas iš Loop-A + Loop-D:
-         - Iš Loop-A: ideali pardavėja — koks type?
-         - Iš Loop-D: faktinis 5-seller cohort — jie matcha Loop-A persona?
-         - Išvada: "Persona matches real cohort — low risk for pilot"
+      3. Srauto parengtis:
+         - Ką rodo Loop-C matavimai su savo imtimi?
+         - Ar tai pakanka pilotui? Jei ne — kokia rankinė atsarga reikalinga?
 
-      2. Cross-reference pain points:
-         - Loop-A: "payment trust" was #2 theme
-         - Loop-B: "escrow hold 7 days" is approved mitigation
-         - Išvada: "Product feature directly addresses user pain"
+      4. Rizika:
+         - Kohortos rizika pagal Loop-D
+         - Teisinė parengtis pagal Loop-B, ĮSKAITANT atvirus punktus
+         - Bendras vertinimas: išvada formuluojama TIK iš aukščiau esančių
+           duomenų. Jei G2 neuždarytas, rizika negali būti „žema".
 
-      3. Validate workflow:
-         - Loop-C: "photo-to-listing v2 scores 7.5/10"
-         - Loop-A: "sellers valued fast listing creation"
-         - Išvada: "AI feature solves real pain, quality adequate for pilot"
-
-      4. Risk assessment:
-         - Loop-D cohort: all 5 sellers = 0 disputes, clean history
-         - Loop-B legal bounds: all risks identified + mitigations
-         - Išvada: "Pilot launch is low-risk with documented safeguards"
-
-      OUTPUT: Unified JSON + executive summary (1 page).
+      IŠVESTIS: viena struktūra + 1 psl. santrauka. Kiekvienas teiginys su žyma.
 
     input:
-      loop_a_insights: "[path: /graph/loop-a-interviews/output/insights.json]"
-      loop_b_checklist: "[path: /graph/loop-b-legal/output/pilot-checklist.json]"
-      loop_c_metrics: "[path: /graph/loop-c-photo/output/quality-report.json]"
-      loop_d_cohort: "[path: /graph/loop-d-sellers/output/cohort-profile.json]"
+      loop_a_insights: "graph/output/loop-a/insights.json"
+      loop_b_checklist: "graph/output/loop-b/pilot_checklist.json"
+      loop_b_open_items: "graph/output/loop-b/pilot_checklist.json#open_items"
+      loop_c_metrics: "graph/output/loop-c/quality_report.md"
+      loop_d_cohort: "graph/output/loop-d/cohort_profile.json"
 
     output_schema: |
       unified_context:
-        interview_themes: [
-          {
-            name: string
+        interview_themes:
+          - name: string
             mentions: integer
+            denominator: integer
             severity: string
-            product_mitigation: string (from Loop-B/C)
-          }
-        ]
-
-        seller_personas:
-          ideal_from_research: {name, type, pain_points}
-          real_from_cohort: {name, type, pain_points}
-          alignment_score: float (0–1)
-          risk_assessment: string
-
+            product_response: string | "NONE — spraga"
+            provenance: string
+        persona_alignment:
+          ideal_from_research: {name, type, pain_points, derived_from_calls}
+          real_from_cohort: {name, type, pain_points, n}
+          matches: [string]
+          mismatches: [string]
         workflow_validation:
-          photo_to_listing_ready: bool
-          quality_score: float
-          user_need_alignment: string
-
+          quality_score: {value: float, sample_size: integer}
+          ready_for_pilot: bool
+          manual_fallback_needed: bool
         legal_readiness:
-          checklist_items_count: integer
-          legal_sign_off: bool
-          approver: string
-          remaining_risks: [string]
-
+          rules_count: integer
+          g2_closed: bool
+          approver: string | null
+          open_items: [string]
         cohort_readiness:
           seller_count: integer
-          avg_history_quality: string
-          attrition_risk: "low" | "medium"
-
-      executive_summary: string (max 1 page)
+          attrition_risk: "low" | "medium" | "high"
+        gaps:
+          - {theme: string, why_unaddressed: string}
+      overall_risk:
+        level: "low" | "medium" | "high"
+        derived_from: [string]
+      executive_summary: string
+      untagged_claims: [string]   # privalo būti tuščias
 
     success_criteria:
-      critical: "all 4 loop outputs integrated"
-      required: "synthesis completed + 1-page summary generated"
-      nice_to_have: "synthesis + risk matrix + mitigation roadmap"
+      minimum: "visi 4 loop'ų rezultatai integruoti"
+      target: "integracija + 1 psl. santrauka + spragų sąrašas"
+      stretch: "papildomai rizikos matrica"
 
-    estimated_duration: 1 day
-    dependencies: "A, B, C, D COMPLETE"
-    owner: "Claude AI (synthesis) + You (validation)"
+    owner: "Claude (sintezė) + Eimantas (validacija)"
 
+  # -------------------------------------------------------------------------
   - name: create_persona
     type: persona_generation
+    start_day: P22
+    end_day: P23
+    data_class: customer_personal
+    depends_on: [synthesize_all_outputs]
+    requires_gate: [G1, G2]
     prompt: |
-      Iš Loop-A pokalbių ir Loop-D cohort profilio,
-      nubrėžk detalizuotą SELLER PERSONA.
+      Sukurk pardavėjo personą IŠ Loop-A pokalbių ir Loop-D kohortos.
 
-      **TEMPLATE:**
+      STRUKTŪRA (kiekvienas laukas su žyma ir imtimi):
 
-      # [Persona Name] — Repeat Seller, Used Electronics
+      # [Personos vardas] — pakartotinis pardavėjas, naudota elektronika
 
-      ## Demographics
-      - Age: [25–45]
-      - Location: [Urban Lithuania]
-      - Tech comfort: [Intermediate — uses Paysera, but not power user]
-      - Seller type: [Casual upgrader / Professional reseller]
+      ## Kas žinoma
+      - Amžiaus intervalas — [A:n] arba [TBD], jei nerinkome
+      - Vietovė — [D] arba [TBD]
+      - Technologinis įgudimas — [A:n]
+      - Pardavėjo tipas — [A:n] / [D]
 
-      ## Selling Behavior
-      - Frequency: [~5 items/month, consistent]
-      - Categories: [Phones 60%, Laptops 40%]
-      - Average item value: [150–400 EUR]
-      - Listing process (current): [Takes 15–20 min per item]
-        - Photograph device (2–3 angles)
-        - Write description manually (10 min of typing + corrections)
-        - Research comparable prices (3–5 min)
-        - Post listing
+      ## Pardavimo elgsena
+      - Dažnis — [D], n=
+      - Kategorijos — [D], n=
+      - Vidutinė vertė — [D], n=
+      - Dabartinis skelbimo kūrimo laikas — [A:n]
 
-      ## Pain Points (from Loop-A interviews)
-      1. **Time friction:** "Listing creation is tedious"
-      2. **Description quality:** "I struggle to describe conditions properly"
-      3. **Pricing uncertainty:** "How much should I ask?"
-      4. **Payment trust:** "Worried about chargebacks / fake buyers"
+      ## Skausmo taškai
+      Tik tie, kurie pasirodė pokalbiuose. Prie kiekvieno — kiek iš kiek.
 
-      ## Motivation for Pilot
-      - Save time on listing creation (by 50%+)
-      - Higher-quality descriptions → more inquiries
-      - Faster transactions → more inventory turnover
+      ## Motyvacija dalyvauti pilote
+      Iš verbavimo atsakymų [D], ne iš prielaidos.
 
-      ## Trust Triggers (what makes them trust Paysera?)
-      - Established platform (already use for buyer protection)
-      - Identity verification (know Paysera verifies users)
-      - Protected payment (can dispute if something goes wrong)
+      ## Pasitikėjimo signalai
+      [A:n]
 
-      ## Technical Skills
-      - Can photograph items (owns smartphone)
-      - Comfortable with in-app workflows (no CLI / backend)
-      - Prefers mobile-first experience (checks listings on phone)
+      ## Prieštaravimai ir abejonės
+      [A:n] — tikri, ne numanomi
 
-      ## Objections (potential)
-      - "Will AI descriptions match my listing style?"
-      - "What if the AI price is too low / too high?"
-      - "Can I customize before posting?"
+      ## Ko NEŽINOME
+      Atviras sąrašas. Persona be šio skyriaus yra grožinė literatūra.
 
-      ## Success Metrics (for this persona in pilot)
-      - Participant completes >= 3 listings via platform
-      - Average listing time <= 5 min (down from 15–20)
-      - At least 1 transaction with protected payment
-      - 14-day sell-through rate >= 50% (relative to their history)
-
-      OUTPUT: Markdown persona + visual one-pager (if possible).
+      DRAUDIMAI:
+      - Jokių demografinių duomenų, kurių nerinkome
+      - Jokių citatų, kurių niekas nepasakė
+      - Jokio „~5 vnt./mėn.", jei tikras vidurkis kitoks
 
     input:
-      interview_data: "[from Loop-A extract_insights]"
-      cohort_data: "[from Loop-D analyze_cohort_profile]"
-      cohort_actual_sellers: 5
+      interview_data: "[iš Loop-A extract_insights]"
+      cohort_data: "[iš Loop-D analyze_cohort_profile]"
 
     output_schema: |
       persona:
         name: string
         archetype: string
-        demographics: {age_range, location, tech_comfort}
-        selling_behavior: {frequency, categories, avg_value, current_process_time}
-        pain_points: [string]
-        motivation_for_pilot: [string]
-        trust_triggers: [string]
-        objections: [string]
-        success_metrics: [string]
+        fields:
+          - {field: string, value: string, provenance: string, sample_size: integer}
+        unknowns: [string]
+        derived_from_calls: integer
+        derived_from_cohort: integer
 
     success_criteria:
-      critical: "1 persona drafted"
-      required: "1 detailed persona + cohort alignment check"
-      nice_to_have: "2–3 personas (A/B variations, e.g., casual vs professional)"
+      minimum: "1 persona su žymomis ir „ko nežinome" skyriumi"
+      target: "1 persona + atitikimo kohortai patikra"
+      stretch: "2–3 personos"
 
-    estimated_duration: 1 day
-    dependencies: "synthesize_all_outputs COMPLETE"
-    owner: "Claude AI (generation) + You (validation)"
+    owner: "Claude (generavimas) + Eimantas (validacija)"
 
+  # -------------------------------------------------------------------------
   - name: generate_workflow_checklist
     type: documentation
+    start_day: P22
+    end_day: P23
+    data_class: none
+    depends_on: [synthesize_all_outputs]
+    requires_gate: [G1, G2]
     prompt: |
-      Iš Loop-C photo-to-listing workflow + Loop-B legal bounds,
-      sukurk SELLER-FACING CHECKLIST: "How to list an item on Paysera Classifieds."
+      Iš Loop-C srauto ir Loop-B ribų sukurk PARDAVĖJUI skirtą sąrašą:
+      „Kaip paskelbti prekę Paysera Classifieds".
 
-      **TEMPLATE:**
+      Tai klientui matomas tekstas licencijuotos įstaigos produkte.
+      Todėl:
+      - Jokių pažadų, kurių produktas neduoda
+      - Jokių apsaugos mechanizmų, kurių Loop-B nepatvirtino
+      - Jokių tikslumo procentų, kurių Loop-C neišmatavo
 
-      # Checklist: List Your Item on Paysera Classifieds
+      STRUKTŪRA:
 
-      ## Step 1: Prepare Your Item
-      - [ ] Clean the device (visually inspect for damages)
-      - [ ] Gather specs: brand, model, storage, color, year
-      - [ ] Note condition: Mint / Good / Fair / Poor
-      - [ ] Check for: Cracks, dents, scratches, missing parts
+      ## 1. Paruošk prekę
+      - Nuvalyk įrenginį
+      - Pasižiūrėk specifikacijas: gamintojas, modelis, atmintis, spalva, metai
+      - Įvertink būklę
+      - Patikrink pažeidimus ir ar viskas komplekte
 
-      ## Step 2: Take Photos
-      - [ ] Take 3–5 clear photos (natural lighting)
-      - [ ] Include: Front, back, sides (show condition)
-      - [ ] Photo tips: Avoid shadows, use plain background
-      - [ ] Optional: Include box / charger (if available)
+      ## 2. Nufotografuok
+      - 3–5 aiškios nuotraukos dienos šviesoje
+      - Priekis, nugarėlė, šonai
+      - Venk šešėlių ir netvarkingo fono
+      - Jei turi — dėžutė, kroviklis
 
-      ## Step 3: Upload & Generate Description
-      - [ ] Click "Sell item" → Select "Used phone" OR "Used laptop"
-      - [ ] Upload photos (our AI will recognize the device)
-      - [ ] Review AI-generated title + description
-      - [ ] Edit title if needed (keep under 100 characters)
-      - [ ] Edit description (optional — our AI nails it 80% of the time)
+      ## 3. Įkelk ir peržiūrėk
+      - Pasirink kategoriją
+      - Įkelk nuotraukas
+      - PERŽIŪRĖK AI sugeneruotą pavadinimą ir aprašymą
+      - Pataisyk, kas netikslu
 
-      ## Step 4: Pricing
-      - [ ] Check suggested price range (AI estimates based on model + condition)
-      - [ ] Set your price (within range or customize)
-      - [ ] Tip: Check comparables on Vinted / eBay for reference
+        SVARBU: v1.0 čia buvo parašyta „our AI nails it 80% of the time".
+        Toks skaičius klientui rodomas tik jei jis pamatuotas [C] ir tik su
+        imtimi. Kitu atveju rašoma paprastai: „AI pasiūlymas yra juodraštis.
+        Prieš skelbiant peržiūrėk — už skelbimo turinį atsakai tu."
 
-      ## Step 5: Legal & Safety
-      - [ ] Confirm: Device is not stolen (Paysera will verify)
-      - [ ] Confirm: No counterfeit items
-      - [ ] Confirm: Item matches description (photo + text)
-      - [ ] Acknowledge: Paysera buyer protection + escrow (7 days)
+      ## 4. Kaina
+      - Peržiūrėk siūlomą intervalą
+      - Nustatyk savo kainą
+      - Palyginimui — LT skelbimų portalai
+        (v1.0 siūlė lyginti su Vinted / eBay — tai ne ta rinka)
 
-      ## Step 6: Publish
-      - [ ] Click "Publish"
-      - [ ] Share listing on Facebook / friends (optional)
-      - [ ] Monitor inquiries in-app
+      ## 5. Teisė ir sauga
+      - Patvirtink: prekė ne vogta
+      - Patvirtink: prekė ne klastotė
+      - Patvirtink: aprašymas atitinka tikrovę
+      - [B] Susipažink su piloto sąlygomis — tekstas iš Loop-B, ne mūsų
 
-      ## After Buyer Found
-      - [ ] Confirm buyer identity via Paysera
-      - [ ] Ship item (tracking required)
-      - [ ] Buyer confirms receipt within 7 days
-      - [ ] Payment released to you
+      ## 6. Paskelbk ir stebėk
+      - Paskelbk
+      - Stebėk užklausas programėlėje
 
-      ## FAQ
-      Q: "Can I edit after publishing?"
-      A: Yes, via "Edit listing" button.
+      ## Kai atsiranda pirkėjas
+      - [B] Mokėjimo ir pristatymo eiga — TIK ta, kurią patvirtino Loop-B.
+        Jei apsaugotas mokėjimas dar nepatvirtintas, šis skyrius lieka
+        [TBD] ir pardavėjui nerodomas.
 
-      Q: "What if description is wrong?"
-      A: Customize it before publishing. Our AI is a starting point.
-
-      Q: "What if no buyer after 14 days?"
-      A: Relist for free OR adjust price.
-
-      ---
-
-      OUTPUT: HTML / Markdown checklist + embedded screenshots (if available).
+      ## DUK
+      Bent 5 klausimai. Atsakymai — tik apie tai, ką produktas tikrai daro.
 
     input:
-      photo_to_listing_workflow: "[from Loop-C run_photo_to_listing_ai]"
-      legal_bounds: "[from Loop-B map_to_pilot_scope — user-facing rules]"
-      prompt_version_selected: "[from Loop-C quality_check_outputs]"
+      photo_to_listing_workflow: "[iš Loop-C]"
+      legal_bounds: "[iš Loop-B map_to_pilot_scope — klientui matomos taisyklės]"
+      g2_status: "[iš Loop-B]"
 
     output_schema: |
       workflow_checklist:
         title: string
-        steps: [
-          {
-            step_number: integer
-            title: string
-            instructions: [string]
-            checklist_items: [string]
-            tips: [string]
-            warnings: [string] (if applicable)
-          }
-        ]
-        faq: [
-          {
-            question: string
-            answer: string
-          }
-        ]
+        steps:
+          - {step_number: integer, title: string, items: [string], tips: [string], warnings: [string]}
+        faq: [{question: string, answer: string, provenance: string}]
+        blocked_sections: [string]   # skyriai, laukiantys [B] patvirtinimo
 
     success_criteria:
-      critical: "checklist with 6 major steps drafted"
-      required: "detailed checklist + 5+ FAQ items"
-      nice_to_have: "checklist + screenshots + video guide"
+      minimum: "6 žingsnių sąrašas"
+      target: "detalus sąrašas + 5 DUK + pažymėti blokuoti skyriai"
+      stretch: "papildomai ekrano nuotraukos"
 
-    estimated_duration: 1 day
-    dependencies: "synthesize_all_outputs COMPLETE"
-    owner: "Claude AI (generation) + You (UX validation)"
+    owner: "Claude (generavimas) + Eimantas (UX validacija)"
 
+  # -------------------------------------------------------------------------
   - name: draft_pilot_brief
     type: executive_document
+    start_day: P23
+    end_day: P25
+    data_class: customer_personal
+    depends_on: [synthesize_all_outputs, create_persona, generate_workflow_checklist]
+    requires_gate: [G1, G2]
     prompt: |
-      Iš synthesize_all_outputs + create_persona + generate_workflow_checklist,
-      sukurk galutinį **30-DAY PILOT BRIEF**.
+      Užpildyk `graph/pilot-brief-template.md` tikrais rezultatais.
 
-      **STRUKTURA:**
+      TAISYKLĖS:
+      1. Šablone esantys [TBD] keičiami DUOMENIMIS arba paliekami [TBD].
+         [TBD] galutiniame brief'e nėra klaida — tai sąžiningas atsakymas.
+         Išgalvotas skaičius vietoje [TBD] yra klaida.
 
-      ---
-      # PAYSERA CLASSIFIEDS: 30-DAY PILOT BRIEF
-      ## Used Electronics Category (Phones, Laptops)
+      2. Kiekvienas faktinis teiginys turi žymą pagal `provenance_rule`.
 
-      **Prepared by:** [Your name]
-      **Date:** [Today]
-      **Pilot Start:** [Target date]
-      **Pilot End:** [Target date + 30 days]
+      3. Pirmajame puslapyje, virš viso kito:
+         - Ką matavome ir kokia imtis
+         - Kas liko nepatvirtinta (Loop-B atviri punktai)
+         - Kokios yra hipotezės, o ne išvados
 
-      ---
+      4. Apsaugotas mokėjimas ir lėšų laikymas aprašomi kaip [HYPOTHESIS],
+         kol Loop-B nepatvirtino. Jokioje vietoje jie nevadinami esama
+         Paysera funkcija.
 
-      ## EXECUTIVE SUMMARY (1 page)
+      5. Konkurentai — LT rinka pagal graph/plan.json `market_scope`.
+         Bet koks teiginys apie konkurentą turi [EXT:<url>] žymą arba
+         nerašomas visai.
 
-      We launch Paysera Classifieds in the used electronics category
-      with 5 pilot sellers. The opportunity: ~[X]k annual GMV in this
-      category across Paysera users. The hook: AI-powered listing
-      creation (photo → description + price) solves the #1 friction
-      point for sellers (time + description quality).
+      6. Sprendimo klausimas CEO turi būti vienas ir aiškus:
+         startuojame pilotą, keičiame apimtį ar sustojame — ir kokių
+         įrodymų trūksta kiekvienam variantui.
 
-      **Key metrics:**
-      - 14-day sell-through rate: target >= 50%
-      - Seller NPS: target >= 7/10
-      - AI description accuracy: current 7.5/10 (acceptable for pilot)
-
-      ---
-
-      ## I. MARKET & OPPORTUNITY
-
-      ### Background
-      [2–3 sentences on why this category, why now]
-
-      ### Seller Pain Points (from research)
-      1. Payment trust — Fear of chargebacks / fake buyers
-      2. Time friction — Manual listing takes 15–20 min
-      3. Description quality — Struggle to highlight condition
-      4. Pricing uncertainty — Don't know fair market value
-
-      ### Paysera's Advantage
-      - Existing trust (already used for buyer protection)
-      - AI-powered workflow (solves pain #2)
-      - Protected payment + escrow (solves pain #1)
-      - Price recommendations (solves pain #4)
-
-      ---
-
-      ## II. PILOT DESIGN
-
-      ### Cohort: 5 Repeat Sellers
-
-      | Seller | Freq | Avg Value | Category | History |
-      |--------|------|-----------|----------|---------|
-      | [Seller 1] | 5/m | 250 EUR | Phones (80%) | 0 disputes |
-      | [Seller 2] | ... | ... | ... | ... |
-      (etc.)
-
-      **Risk:** Low. All 5 have clean history (0 disputes, 0 chargebacks).
-
-      ### Features in Pilot
-      1. **Photo-to-Listing AI** — v2 prompt (7.5/10 accuracy)
-      2. **Protected Payment** — 7-day escrow hold
-      3. **Dispute Resolution** — Escalation to legal@paysera
-      4. **Identity Verification** — GDPR-compliant (existing Paysera flow)
-
-      ### Timeline
-      - Week 1: Onboard sellers, train on platform
-      - Week 2–4: Live selling (ad-hoc support)
-      - Week 4: Collect feedback, analyze metrics
-
-      ---
-
-      ## III. SUCCESS CRITERIA
-
-      ### Quantitative
-      - **14-day sell-through rate:** >= 50% (vs. seller's historical baseline)
-      - **Listing creation time:** <= 5 min (vs. 15–20 min manual)
-      - **AI description quality score:** >= 7/10 (human review)
-      - **Zero disputes** in pilot period
-
-      ### Qualitative
-      - **Seller feedback:** NPS >= 7/10
-      - **Confidence in payment:** 80%+ say "I trust Paysera escrow"
-      - **Adoption:** All 5 sellers complete >= 3 listings
-
-      ---
-
-      ## IV. LEGAL & COMPLIANCE
-
-      ✅ **Approved by:** [Legal approver name], [date]
-
-      **Constraints & Safeguards:**
-      1. Max transaction value: [from Loop-B] EUR per listing
-      2. Prohibited items: [list from Loop-B]
-      3. Dispute escalation: [process from Loop-B]
-      4. AML red flags: [from Loop-B]
-
-      ---
-
-      ## V. ROADMAP: DAY 30 → FULL LAUNCH
-
-      **If pilot succeeds:**
-      - Expand to auto category (same logic)
-      - Expand cohort from 5 → 50 sellers
-      - Optimize AI prompt (v2 → v3)
-      - Add buyer-side features (offers, messaging)
-
-      **If pilot has issues:**
-      - Diagnose: [specific metric failed]
-      - Iterate: [specific change]
-      - Re-run: [compress timeline or extend pilot]
-
-      ---
-
-      ## VI. APPENDICES
-
-      - A. Seller Persona (from Loop-A)
-      - B. Workflow Checklist (from Loop-C)
-      - C. Legal Checklist (from Loop-B)
-      - D. Interview Insights Summary (from Loop-A)
-      - E. AI Quality Report (from Loop-C)
-      - F. Cohort Profile (from Loop-D)
-
-      ---
-
-      OUTPUT: PDF-ready Markdown + presenter notes.
+      IŠVESTIS: `graph/output/loop-e/pilot_brief.md`
 
     input:
-      synthesis_data: "[from synthesize_all_outputs]"
-      persona: "[from create_persona]"
-      checklist: "[from generate_workflow_checklist]"
-      loop_a_themes: "[from Loop-A extract_insights]"
-      loop_b_bounds: "[from Loop-B map_to_pilot_scope]"
-      loop_c_quality: "[from Loop-C quality_check_outputs]"
-      loop_d_cohort: "[from Loop-D analyze_cohort_profile]"
+      template: "graph/pilot-brief-template.md"
+      synthesis_data: "[iš synthesize_all_outputs]"
+      persona: "[iš create_persona]"
+      checklist: "[iš generate_workflow_checklist]"
 
     output_schema: |
       brief:
         title: string
         prepared_by: string
         date: YYYY-MM-DD
-        pilot_duration_days: 30
-
-        sections:
-          executive_summary: string (max 1 page)
-          market_opportunity: string
-          pain_points: [string]
-          pilot_design: {cohort_size, features, timeline}
-          success_criteria: {quantitative: [metric], qualitative: [metric]}
-          legal_constraints: [string]
-          launch_roadmap: string
-          appendices: [string]
+        prep_window: "P1–P30"
+        live_pilot_window: "L1–L30"
+        first_page:
+          what_we_measured: [string]
+          sample_sizes: {interviews: integer, photos: integer, cohort: integer}
+          unconfirmed_items: [string]
+          hypotheses: [string]
+        sections: {...}
+        untagged_claims: [string]     # privalo būti tuščias
+        tbd_count: integer            # leidžiama > 0
 
     success_criteria:
-      critical: "draft brief completed (all sections)"
-      required: "brief ready for internal review + approval"
-      nice_to_have: "brief formatted for board presentation"
+      minimum: "juodraštis su visais skyriais, 0 nepažymėtų teiginių"
+      target: "paruoštas vidinei peržiūrai"
+      stretch: "paruoštas valdybos pristatymui"
 
-    estimated_duration: 2 days
-    dependencies: "synthesize_all_outputs + create_persona + generate_workflow_checklist COMPLETE"
-    owner: "Claude AI (generation) + You (refinement + internal review)"
+    owner: "Claude (generavimas) + Eimantas (redakcija)"
 
 exit_conditions:
   completion:
-    - metric: "synthesis_complete"
-      critical: "all 4 loop outputs integrated"
-      required: "synthesis + 1-page summary"
+    - metric: loop_outputs_integrated
+      minimum: 4
+      target: 4
+      stretch: 4
 
-    - metric: "persona_created"
-      critical: "1 persona drafted"
-      required: "detailed + cohort alignment"
+    - metric: personas
+      minimum: 1
+      target: 1
+      stretch: 3
 
-    - metric: "workflow_checklist_complete"
-      critical: "6-step checklist drafted"
-      required: "detailed checklist + FAQ"
+    - metric: checklist_steps
+      direction: higher_better
+      minimum: 6
+      target: 6
+      stretch: 6
 
-    - metric: "pilot_brief_complete"
-      critical: "draft brief with all sections"
-      required: "ready for internal review"
+    - metric: untagged_claims
+      direction: lower_better
+      maximum: 0
+      target: 0
+      stretch: 0
+      definition: "Faktiniai teiginiai brief'e be šaltinio žymos. Nulis yra vienintelė praeinanti reikšmė."
 
-    - metric: "internal_review"
-      critical: "reviewed by you"
-      required: "reviewed by CTO + Legal (optional for day 19)"
+    - metric: tbd_count
+      direction: informational
+      definition: >-
+        Kiek [TBD] vietų liko brief'e. Ribos nėra ir nebus: [TBD] yra sąžiningas
+        atsakymas, o išgalvotas skaičius jo vietoje — ne. Skaičiuojama tam, kad
+        skaitytojas matytų, kiek neužpildyta, o ne tam, kad loop'as kristų.
 
-    - metric: "executive_readiness"
-      critical: "can be presented to CEO"
-      required: "feedback incorporated, final version"
+  binary_requirements:
+    - id: provenance_complete
+      description: "0 nepažymėtų faktinių teiginių brief'e"
+      substitute_allowed: false
+    - id: no_prewritten_conclusions
+      description: "Sintezės prompt'uose nėra iš anksto įrašytų išvadų"
+      substitute_allowed: false
+
+  # CTO ir Legal peržiūros iš čia perkeltos į vartus G3 (2026-08-16).
+  # Jos buvo šio loop'o binary reikalavimai su `due_day: P26` — viena diena po
+  # to, kai loop'as užsidaro P25. Reikalavimas, kurio terminas vėlesnis už jo
+  # savininko pabaigą, neturi savininko: dienos P26–P30 turėjo tris gaires ir
+  # nė vieno loop'o, agento ar išėjimo sąlygos.
+  #
+  # G3 — publikavimo patvirtinimas, uždaromas P26, blokuoja CEO pristatymą.
+  # Tai šios repozitorijos pagrindinė taisyklė, įrašyta į struktūrą:
+  # generavimas ir publikavimas yra du atskiri žingsniai.
 
   timeline:
-    deadline: "DAY 19 23:59 UTC (CEO presentation on DAY 20)"
-    warning_threshold: "DAY 17 18:00 UTC — if draft not started"
-    fail_threshold: "DAY 19 18:00 UTC — if not internally reviewed"
+    start_day: P21
+    deadline: "P25 pabaiga (juodraštis)"
+    g3_review_day: P26
+    ceo_decision_day: P27
+    warning_threshold: "P23 — jei brief'as dar nepradėtas"
 
   escalation:
     if_behind_schedule: |
-      - DAY 16: No synthesis started → compress Loop-E to 2 days, skip some appendices
-      - DAY 18: Brief not drafted → present skeleton + raw data to CTO for feedback
-      - DAY 19: Brief not reviewed → present to CEO as "draft, internal feedback pending"
+      - P23: sintezė nepradėta → trumpinami priedai, bet ne pirmas puslapis
+        ir ne šaltinių žymos.
+      - P25: brief'as neparuoštas → CEO pristatymas slenka į P28.
+        Peržiūra netrumpinama.
+      - P26: peržiūroje randama nepažymėtų teiginių → jie pašalinami arba
+        pažymimi [TBD]. Brief'as su nepažymėtais teiginiais neišeina.
+      - Bet kuriuo atveju: brief'as, kurio Legal neperžiūrėjo, CEO
+        nepristatomas. Alternatyva yra vėlesnė data, ne peržiūros praleidimas.
